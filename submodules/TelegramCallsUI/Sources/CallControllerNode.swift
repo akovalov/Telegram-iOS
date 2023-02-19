@@ -17,6 +17,7 @@ import AlertUI
 import PresentationDataUtils
 import DeviceAccess
 import ContextUI
+import WallpaperBackgroundNode
 
 private func interpolateFrame(from fromValue: CGRect, to toValue: CGRect, t: CGFloat) -> CGRect {
     return CGRect(x: floorToScreenPixels(toValue.origin.x * t + fromValue.origin.x * (1.0 - t)), y: floorToScreenPixels(toValue.origin.y * t + fromValue.origin.y * (1.0 - t)), width: floorToScreenPixels(toValue.size.width * t + fromValue.size.width * (1.0 - t)), height: floorToScreenPixels(toValue.size.height * t + fromValue.size.height * (1.0 - t)))
@@ -465,7 +466,20 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     private var orientationDidChangeObserver: NSObjectProtocol?
     
     private var currentRequestedAspect: CGFloat?
-    
+
+    private enum BackgroundType {
+        case blueViolet, blueGreen, orangeRed
+        var colors: [UInt32] {
+            switch self {
+            case .blueViolet: return [0xAC65D4, 0x7261DA, 0x616AD5, 0x5295D6]
+            case .blueGreen: return [0xBAC05D, 0x53A6DE, 0x3C9C8F, 0x398D6F]
+            case .orangeRed: return [0xF4992E, 0xC94986, 0xB84498, 0xFF7E46]
+            }
+        }
+    }
+    private var backgroundType: BackgroundType = .blueViolet
+    private var backgroundNodes: [BackgroundType: WallpaperBackgroundNode]
+
     init(sharedContext: SharedAccountContext, account: Account, presentationData: PresentationData, statusBar: StatusBar, debugInfo: Signal<(String, String), NoError>, shouldStayHiddenUntilConnection: Bool = false, easyDebugAccess: Bool, call: PresentationCall) {
         self.sharedContext = sharedContext
         self.account = account
@@ -502,7 +516,14 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.toastNode = CallControllerToastContainerNode(strings: self.presentationData.strings)
         self.keyButtonNode = CallControllerKeyButton()
         self.keyButtonNode.accessibilityElementsHidden = false
-        
+
+        let accountContext = sharedContext.makeTempAccountContext(account: account)
+        self.backgroundNodes = [
+            .blueViolet: createWallpaperBackgroundNode(context: accountContext, forChatDisplay: false),
+            .blueGreen: createWallpaperBackgroundNode(context: accountContext, forChatDisplay: false),
+            .orangeRed: createWallpaperBackgroundNode(context: accountContext, forChatDisplay: false)
+        ]
+
         super.init()
         
         self.containerNode.backgroundColor = .black
@@ -529,7 +550,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 }
             }
         }
-        
+
+        self.backgroundNodes.forEach { type, node in
+            self.containerNode.addSubnode(node)
+        }
         self.containerNode.addSubnode(self.imageNode)
         self.containerNode.addSubnode(self.videoContainerNode)
         self.containerNode.addSubnode(self.dimNode)
@@ -783,6 +807,14 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         
         let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:)))
         self.view.addGestureRecognizer(tapRecognizer)
+
+        self.backgroundNodes.forEach { type, node in
+            node.isHidden = type != .blueViolet
+            node.update(wallpaper: .gradient(TelegramWallpaper.Gradient(id: nil, colors: type.colors, settings: WallpaperSettings(rotation: 0))))
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.backgroundNodes[.blueViolet]?.updateIsLooping(true)
+        }
     }
     
     func updatePeer(accountPeer: Peer, peer: Peer, hasOther: Bool) {
@@ -1040,7 +1072,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 incomingVideoNode.updateIsBlurred(isBlurred: !isActive)
             }
         }
-                
+
+        updateBackground(forCallState: callState)
+
         switch callState.state {
             case .waiting, .connecting:
                 statusValue = .text(string: self.presentationData.strings.Call_StatusConnecting, displayLogo: false)
@@ -1237,6 +1271,33 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             }
         }
         self.statusNode.setVisible(visible || self.keyPreviewNode != nil, transition: transition)
+    }
+
+    private func updateBackground(forCallState callState: PresentationCallState) {
+
+        let newBackgroundType: BackgroundType
+        if case .active = callState.state {
+            newBackgroundType = .blueGreen
+        } else {
+            newBackgroundType = .blueViolet
+        }
+        guard self.backgroundType != newBackgroundType,
+              let visibleNode = self.backgroundNodes.values.first(where: { !$0.isHidden }),
+              let newVisibleNode = self.backgroundNodes[newBackgroundType]
+        else {
+            return
+        }
+        self.backgroundType = newBackgroundType
+
+        self.containerNode.insertSubnode(newVisibleNode, belowSubnode: visibleNode)
+        newVisibleNode.isHidden = false
+        newVisibleNode.layer.removeAllAnimations()
+
+        visibleNode.layer.animateAlpha(from: 1, to: 0, duration: 0.5, removeOnCompletion: false) { _ in
+            visibleNode.isHidden = true
+            visibleNode.updateIsLooping(false)
+            newVisibleNode.updateIsLooping(true)
+        }
     }
     
     private func maybeScheduleUIHidingForActiveVideoCall() {
@@ -1571,6 +1632,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         if let keyPreviewNode = self.keyPreviewNode {
             transition.updateFrame(node: keyPreviewNode, frame: containerFullScreenFrame)
             keyPreviewNode.updateLayout(size: layout.size, transition: .immediate)
+        }
+
+        self.backgroundNodes.forEach { type, node in
+            transition.updateFrame(node: node, frame: containerFullScreenFrame)
+            node.updateLayout(size: layout.size, transition: .immediate)
         }
 
         let imageSize = CGSize(width: 136, height: 136)
