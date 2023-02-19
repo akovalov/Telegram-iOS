@@ -791,7 +791,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             if let peerReference = PeerReference(peer), !peer.profileImageRepresentations.isEmpty {
                 let representations: [ImageRepresentationWithReference] = peer.profileImageRepresentations.map({ ImageRepresentationWithReference(representation: $0, reference: .avatar(peer: peerReference, resource: $0.resource)) })
                 self.imageNode.setSignal(chatAvatarGalleryPhoto(account: self.account, representations: representations, immediateThumbnailData: nil, autoFetchFullSize: true))
-                self.dimNode.isHidden = false
+                self.dimNode.isHidden = true
             } else {
                 self.imageNode.setSignal(callDefaultBackground())
                 self.dimNode.isHidden = true
@@ -1572,9 +1572,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             transition.updateFrame(node: keyPreviewNode, frame: containerFullScreenFrame)
             keyPreviewNode.updateLayout(size: layout.size, transition: .immediate)
         }
-        
-        transition.updateFrame(node: self.imageNode, frame: containerFullScreenFrame)
-        let arguments = TransformImageArguments(corners: ImageCorners(), imageSize: CGSize(width: 640.0, height: 640.0).aspectFilled(layout.size), boundingSize: layout.size, intrinsicInsets: UIEdgeInsets())
+
+        let imageSize = CGSize(width: 136, height: 136)
+        let imageFrame = CGRect(origin: CGPoint(x: containerFullScreenFrame.width / 2 - imageSize.width / 2, y: containerFullScreenFrame.height / 2 - 70 - imageSize.height), size: imageSize)
+        transition.updateFrame(node: self.imageNode, frame: imageFrame)
+        let arguments = TransformImageArguments(corners: ImageCorners(radius: imageSize.width / 2), imageSize: imageSize, boundingSize: imageSize, intrinsicInsets: UIEdgeInsets())
         let apply = self.imageNode.asyncLayout()(arguments)
         apply()
         
