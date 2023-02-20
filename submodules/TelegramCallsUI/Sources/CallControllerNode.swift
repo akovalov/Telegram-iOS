@@ -471,9 +471,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         case blueViolet, blueGreen, orangeRed
         var colors: [UInt32] {
             switch self {
-            case .blueViolet: return [0xAC65D4, 0x7261DA, 0x616AD5, 0x5295D6]
-            case .blueGreen: return [0xBAC05D, 0x53A6DE, 0x3C9C8F, 0x398D6F]
-            case .orangeRed: return [0xF4992E, 0xC94986, 0xB84498, 0xFF7E46]
+            case .blueViolet: return [0x5295D6, 0x616AD5, 0xAC65D4, 0x7261DA]
+            case .blueGreen: return [0xBAC05D, 0x3C9C8F, 0x53A6DE, 0x398D6F]
+            case .orangeRed: return [0xF4992E, 0xC94986, 0xFF7E46, 0xB84498]
             }
         }
     }
