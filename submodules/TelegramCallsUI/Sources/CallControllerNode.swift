@@ -18,6 +18,7 @@ import PresentationDataUtils
 import DeviceAccess
 import ContextUI
 import WallpaperBackgroundNode
+import AudioBlob
 
 private func interpolateFrame(from fromValue: CGRect, to toValue: CGRect, t: CGFloat) -> CGRect {
     return CGRect(x: floorToScreenPixels(toValue.origin.x * t + fromValue.origin.x * (1.0 - t)), y: floorToScreenPixels(toValue.origin.y * t + fromValue.origin.y * (1.0 - t)), width: floorToScreenPixels(toValue.size.width * t + fromValue.size.width * (1.0 - t)), height: floorToScreenPixels(toValue.size.height * t + fromValue.size.height * (1.0 - t)))
@@ -373,7 +374,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     
     private let imageNode: TransformImageNode
     private let dimNode: ASImageNode
-    
+    private let audioLevelView: VoiceBlobView
+
     private var candidateIncomingVideoNodeValue: CallVideoNode?
     private var incomingVideoNodeValue: CallVideoNode?
     private var incomingVideoViewRequested: Bool = false
@@ -524,6 +526,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             .orangeRed: createWallpaperBackgroundNode(context: accountContext, forChatDisplay: false)
         ]
 
+        
+        self.audioLevelView = VoiceBlobView(frame: .zero, maxLevel: 1.5, smallBlobRange: (0, 0), mediumBlobRange: (0.69, 0.87), bigBlobRange: (0.71, 1.0))
+        self.audioLevelView.setColor(.white)
+
         super.init()
         
         self.containerNode.backgroundColor = .black
@@ -554,6 +560,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.backgroundNodes.forEach { type, node in
             self.containerNode.addSubnode(node)
         }
+        self.containerNode.view.insertSubview(self.audioLevelView, belowSubview: self.imageNode.view)
         self.containerNode.addSubnode(self.imageNode)
         self.containerNode.addSubnode(self.videoContainerNode)
         self.containerNode.addSubnode(self.dimNode)
@@ -815,6 +822,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.backgroundNodes[.blueViolet]?.updateIsLooping(true)
         }
+
+        self.audioLevelView.startAnimating()
     }
     
     func updatePeer(accountPeer: Peer, peer: Peer, hasOther: Bool) {
@@ -1086,6 +1095,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 }
             case .terminating:
                 statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
+                self.audioLevelView.stopAnimating()
             case let .terminated(_, reason, _):
                 if let reason = reason {
                     switch reason {
@@ -1121,6 +1131,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 } else {
                     statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
                 }
+                self.audioLevelView.stopAnimating()
             case .ringing:
                 var text: String
                 if self.call.isVideo {
@@ -1212,6 +1223,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         
         let hasIncomingVideoNode = self.incomingVideoNodeValue != nil && self.expandedVideoNode === self.incomingVideoNodeValue
         self.videoContainerNode.isPinchGestureEnabled = hasIncomingVideoNode
+    }
+
+    func updateAudioLevel(_ audioLevel: Float) {
+
+        self.audioLevelView.updateLevel(CGFloat(audioLevel), immediately: false)
     }
     
     private func updateToastContent() {
@@ -1423,6 +1439,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     
     func animateOut(completion: @escaping () -> Void) {
         self.statusBar.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false)
+        self.audioLevelView.stopAnimating()
         if !self.shouldStayHiddenUntilConnection || self.containerNode.alpha > 0.0 {
             self.containerNode.layer.allowsGroupOpacity = true
             self.containerNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false, completion: { [weak self] _ in
@@ -1645,7 +1662,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         let arguments = TransformImageArguments(corners: ImageCorners(radius: imageSize.width / 2), imageSize: imageSize, boundingSize: imageSize, intrinsicInsets: UIEdgeInsets())
         let apply = self.imageNode.asyncLayout()(arguments)
         apply()
-        
+
+        self.audioLevelView.frame = imageFrame.insetBy(dx: -40, dy: -40)
+
         let navigationOffset: CGFloat = max(20.0, layout.safeInsets.top)
         let topOriginY = interpolate(from: -20.0, to: navigationOffset, value: uiDisplayTransition)
         
