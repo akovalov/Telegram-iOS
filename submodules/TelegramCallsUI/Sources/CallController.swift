@@ -28,6 +28,7 @@ protocol CallControllerNodeProtocol: AnyObject {
     var callEnded: ((Bool) -> Void)? { get set }
     var dismissedInteractively: (() -> Void)? { get set }
     var dismissAllTooltips: (() -> Void)? { get set }
+    var push: ((ViewController) -> Void)? { get set }
     
     func updateAudioOutputs(availableOutputs: [AudioSessionOutput], currentOutput: AudioSessionOutput?)
     func updateCallState(_ callState: PresentationCallState)
@@ -307,6 +308,10 @@ public final class CallController: ViewController {
                     }
                 })
             }
+        }
+
+        self.controllerNode.push = { [weak self] c in
+            self?.push(c)
         }
         
         self.controllerNode.dismissedInteractively = { [weak self] in

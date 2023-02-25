@@ -444,7 +444,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     var dismissedInteractively: (() -> Void)?
     var present: ((ViewController) -> Void)?
     var dismissAllTooltips: (() -> Void)?
-    
+    var push: ((ViewController) -> Void)?
+
     private var toastContent: CallControllerToastContent?
     private var displayToastsAfterTimestamp: Double?
     
@@ -491,7 +492,16 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.shouldStayHiddenUntilConnection = shouldStayHiddenUntilConnection
         self.easyDebugAccess = easyDebugAccess
         self.call = call
-        
+        self.call.canBeRemovedDelay = { callState in
+            if case let .terminated(_, _, reportRating) = callState?.state {
+                let presentRating = true || reportRating//reportRating || self.forceReportRating
+                if presentRating {
+                    return 5.0
+                }
+            }
+            return nil
+        }
+
         self.containerTransformationNode = ASDisplayNode()
         self.containerTransformationNode.clipsToBounds = true
         
@@ -1215,13 +1225,32 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
         
         if case let .terminated(id, _, reportRating) = callState.state, let callId = id {
-            let presentRating = reportRating || self.forceReportRating
+
+            self.buttonsNode.isHidden = true
+            self.keyButtonNode.isHidden = true
+
+            let presentRating = true || reportRating//reportRating || self.forceReportRating
             if presentRating {
-                self.presentCallRating?(callId, self.call.isVideo)
+                let node = callRatingNode(sharedContext: self.sharedContext, account: self.account, callId: callId, userInitiated: false, isVideo: self.call.isVideo, push: { [weak self] c in
+                    self?.push?(c)
+                })
+                let size = CGSize(width: 304, height: 142)
+                if let validSize = self.validLayout?.0.size {
+                    node.frame = CGRect(origin: CGPoint(x: validSize.width / 2.0 - size.width / 2.0, y: validSize.height / 2.0 + 57.0 / 2.0 + 50), size: size)
+                    node.view.layer.contentsScale = 0
+                    node.layer.animateScale(from: 0, to: 1, duration: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+                    _ = node.updateLayout(size: size, transition: .immediate)
+                }
+                self.containerNode.addSubnode(node)
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                    self?.callEnded?(false)
+                }
+            } else {
+                self.callEnded?(false)
             }
-            self.callEnded?(presentRating)
         }
-        
+
         let hasIncomingVideoNode = self.incomingVideoNodeValue != nil && self.expandedVideoNode === self.incomingVideoNodeValue
         self.videoContainerNode.isPinchGestureEnabled = hasIncomingVideoNode
     }

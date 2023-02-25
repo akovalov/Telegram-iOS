@@ -2323,7 +2323,9 @@ Unused sets are archived when you add more.";
 "Calls.AddTab" = "Add Tab";
 "Calls.NewCall" = "New Call";
 
-"Calls.RatingTitle" = "Please rate the quality\nof your Telegram call";
+"Calls.RatingTitle" = "Rate This Call";
+"Calls.RatingTitle2" = "Rate This Call";
+"Calls.RatingText" = "Please rate the quality of this call.";
 "Calls.SubmitRating" = "Submit";
 
 "Call.Seconds_1" = "%@ second";

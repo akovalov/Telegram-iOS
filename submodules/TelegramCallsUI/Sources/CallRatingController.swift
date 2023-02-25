@@ -17,9 +17,10 @@ private final class CallRatingAlertContentNode: AlertContentNode {
     var rating: Int?
     
     private let titleNode: ASTextNode
+    private let textNode: ASTextNode
     private var starContainerNode: ASDisplayNode
     private let starNodes: [ASButtonNode]
-    
+
     private let actionNodesSeparator: ASDisplayNode
     private let actionNodes: [TextAlertContentActionNode]
     private let actionVerticalSeparators: [ASDisplayNode]
@@ -27,7 +28,9 @@ private final class CallRatingAlertContentNode: AlertContentNode {
     private let disposable = MetaDisposable()
     
     private var validLayout: CGSize?
-    
+
+    private let effectView: UIVisualEffectView
+
     override var dismissOnOutsideTap: Bool {
         return self.isUserInteractionEnabled
     }
@@ -38,7 +41,8 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         
         self.titleNode = ASTextNode()
         self.titleNode.maximumNumberOfLines = 3
-        
+        self.textNode = ASTextNode()
+
         self.starContainerNode = ASDisplayNode()
         
         var starNodes: [ASButtonNode] = []
@@ -50,9 +54,10 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         self.actionNodesSeparator = ASDisplayNode()
         self.actionNodesSeparator.isLayerBacked = true
         
-        self.actionNodes = actions.map { action -> TextAlertContentActionNode in
-            return TextAlertContentActionNode(theme: theme, action: action)
-        }
+//        self.actionNodes = actions.map { action -> TextAlertContentActionNode in
+//            return TextAlertContentActionNode(theme: theme, action: action)
+//        }
+        self.actionNodes = []
         
         var actionVerticalSeparators: [ASDisplayNode] = []
         if actions.count > 1 {
@@ -63,10 +68,19 @@ private final class CallRatingAlertContentNode: AlertContentNode {
             }
         }
         self.actionVerticalSeparators = actionVerticalSeparators
-        
+
+        self.effectView = UIVisualEffectView()
+        self.effectView.effect = UIBlurEffect(style: .light)
+        self.effectView.clipsToBounds = true
+        self.effectView.layer.cornerRadius = 20.0
+        self.effectView.alpha = 0.8
+
         super.init()
-        
+
+        self.view.addSubview(self.effectView)
+
         self.addSubnode(self.titleNode)
+        self.addSubnode(self.textNode)
         
         self.addSubnode(self.starContainerNode)
         
@@ -76,7 +90,7 @@ private final class CallRatingAlertContentNode: AlertContentNode {
             self.starContainerNode.addSubnode(node)
         }
         
-        self.addSubnode(self.actionNodesSeparator)
+//        self.addSubnode(self.actionNodesSeparator)
         
         for actionNode in self.actionNodes {
             self.addSubnode(actionNode)
@@ -155,11 +169,12 @@ private final class CallRatingAlertContentNode: AlertContentNode {
     }
     
     override func updateTheme(_ theme: AlertControllerTheme) {
-        self.titleNode.attributedText = NSAttributedString(string: self.strings.Calls_RatingTitle, font: Font.bold(17.0), textColor: theme.primaryColor, paragraphAlignment: .center)
+        self.titleNode.attributedText = NSAttributedString(string: self.strings.Calls_RatingTitle2, font: Font.semibold(16.0), textColor: .white, paragraphAlignment: .center)
+        self.textNode.attributedText = NSAttributedString(string: self.strings.Calls_RatingText, font: Font.regular(16.0), textColor: .white, paragraphAlignment: .center)
         
         for node in self.starNodes {
-            node.setImage(generateTintedImage(image: UIImage(bundleImageName: "Call/Star"), color: theme.accentColor), for: [])
-            let highlighted = generateTintedImage(image: UIImage(bundleImageName: "Call/StarHighlighted"), color: theme.accentColor)
+            node.setImage(generateTintedImage(image: UIImage(bundleImageName: "Call/Star"), color: .white), for: [])
+            let highlighted = generateTintedImage(image: UIImage(bundleImageName: "Call/StarHighlighted"), color: .white)
             node.setImage(highlighted, for: [.selected])
             node.setImage(highlighted, for: [.selected, .highlighted])
         }
@@ -178,8 +193,7 @@ private final class CallRatingAlertContentNode: AlertContentNode {
     }
     
     override func updateLayout(size: CGSize, transition: ContainedViewLayoutTransition) -> CGSize {
-        var size = size
-        size.width = min(size.width , 270.0)
+        self.effectView.frame = CGRect(origin: CGPoint(), size: size)
         
         self.validLayout = size
                 
@@ -202,29 +216,18 @@ private final class CallRatingAlertContentNode: AlertContentNode {
             }
         }
         
-        let insets = UIEdgeInsets(top: 18.0, left: 18.0, bottom: 18.0, right: 18.0)
-        
         var origin: CGPoint = CGPoint(x: 0.0, y: 20.0)
+
         let titleSize = self.titleNode.measure(CGSize(width: size.width - 32.0, height: size.height))
-        
-        var contentWidth = max(titleSize.width, minActionsWidth)
-        contentWidth = max(contentWidth, 234.0)
-        
-        var actionsHeight: CGFloat = 0.0
-        switch effectiveActionLayout {
-            case .horizontal:
-                actionsHeight = actionButtonHeight
-            case .vertical:
-                actionsHeight = actionButtonHeight * CGFloat(self.actionNodes.count)
-        }
-        
-        let resultWidth = contentWidth + insets.left + insets.right
-        
-        transition.updateFrame(node: self.titleNode, frame: CGRect(origin: CGPoint(x: floorToScreenPixels((resultWidth - titleSize.width) / 2.0), y: origin.y), size: titleSize))
-        origin.y += titleSize.height + 13.0
-        
-        let starSize = CGSize(width: 42.0, height: 38.0)
-        let starsOrigin = floorToScreenPixels((resultWidth - starSize.width * 5.0) / 2.0)
+        transition.updateFrame(node: self.titleNode, frame: CGRect(origin: CGPoint(x: size.width / 2.0 - titleSize.width / 2.0, y: origin.y), size: titleSize))
+        origin.y += titleSize.height + 10.0
+
+        let textSize = self.textNode.measure(CGSize(width: size.width - 32.0, height: size.height))
+        transition.updateFrame(node: self.textNode, frame: CGRect(origin: CGPoint(x: size.width / 2.0 - textSize.width / 2.0, y: origin.y), size: textSize))
+        origin.y += textSize.height + 10.0
+
+        let starSize = CGSize(width: 42.0, height: 42.0)
+        let starsOrigin = size.width / 2.0 - (starSize.width * 5.0) / 2.0
         self.starContainerNode.frame = CGRect(origin: CGPoint(x: starsOrigin, y: origin.y), size: CGSize(width: starSize.width * CGFloat(self.starNodes.count), height: starSize.height))
         for i in 0 ..< self.starNodes.count {
             let node = self.starNodes[i]
@@ -232,52 +235,7 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         }
         origin.y += titleSize.height
         
-        let resultSize = CGSize(width: resultWidth, height: titleSize.height + actionsHeight + 56.0 + insets.top + insets.bottom)
-        
-        transition.updateFrame(node: self.actionNodesSeparator, frame: CGRect(origin: CGPoint(x: 0.0, y: resultSize.height - actionsHeight - UIScreenPixel), size: CGSize(width: resultSize.width, height: UIScreenPixel)))
-        
-        var actionOffset: CGFloat = 0.0
-        let actionWidth: CGFloat = floor(resultSize.width / CGFloat(self.actionNodes.count))
-        var separatorIndex = -1
-        var nodeIndex = 0
-        for actionNode in self.actionNodes {
-            if separatorIndex >= 0 {
-                let separatorNode = self.actionVerticalSeparators[separatorIndex]
-                switch effectiveActionLayout {
-                    case .horizontal:
-                        transition.updateFrame(node: separatorNode, frame: CGRect(origin: CGPoint(x: actionOffset - UIScreenPixel, y: resultSize.height - actionsHeight), size: CGSize(width: UIScreenPixel, height: actionsHeight - UIScreenPixel)))
-                    case .vertical:
-                        transition.updateFrame(node: separatorNode, frame: CGRect(origin: CGPoint(x: 0.0, y: resultSize.height - actionsHeight + actionOffset - UIScreenPixel), size: CGSize(width: resultSize.width, height: UIScreenPixel)))
-                }
-            }
-            separatorIndex += 1
-            
-            let currentActionWidth: CGFloat
-            switch effectiveActionLayout {
-                case .horizontal:
-                    if nodeIndex == self.actionNodes.count - 1 {
-                        currentActionWidth = resultSize.width - actionOffset
-                    } else {
-                        currentActionWidth = actionWidth
-                    }
-                case .vertical:
-                    currentActionWidth = resultSize.width
-            }
-            
-            let actionNodeFrame: CGRect
-            switch effectiveActionLayout {
-                case .horizontal:
-                    actionNodeFrame = CGRect(origin: CGPoint(x: actionOffset, y: resultSize.height - actionsHeight), size: CGSize(width: currentActionWidth, height: actionButtonHeight))
-                    actionOffset += currentActionWidth
-                case .vertical:
-                    actionNodeFrame = CGRect(origin: CGPoint(x: 0.0, y: resultSize.height - actionsHeight + actionOffset), size: CGSize(width: currentActionWidth, height: actionButtonHeight))
-                    actionOffset += actionButtonHeight
-            }
-            
-            transition.updateFrame(node: actionNode, frame: actionNodeFrame)
-            
-            nodeIndex += 1
-        }
+        let resultSize = CGSize(width: size.width, height: titleSize.height + textSize.height + starSize.height + 40.0)
         
         return resultSize
     }
@@ -341,3 +299,23 @@ public func callRatingController(sharedContext: SharedAccountContext, account: A
     }
     return controller
 }
+
+public func callRatingNode(sharedContext: SharedAccountContext, account: Account, callId: CallId, userInitiated: Bool, isVideo: Bool, push: @escaping (ViewController) -> Void) -> AlertContentNode {
+    let presentationData = sharedContext.currentPresentationData.with { $0 }
+    let theme = presentationData.theme
+    let strings = presentationData.strings
+
+    var contentNode: CallRatingAlertContentNode
+
+    contentNode = CallRatingAlertContentNode(theme: AlertControllerTheme(presentationData: presentationData), ptheme: theme, strings: strings, actions: [], dismiss: {
+    }, apply: { rating in
+        if rating < 4 {
+            push(callFeedbackController(sharedContext: sharedContext, account: account, callId: callId, rating: rating, userInitiated: userInitiated, isVideo: isVideo))
+        } else {
+            let _ = rateCallAndSendLogs(engine: TelegramEngine(account: account), callId: callId, starsCount: rating, comment: "", userInitiated: userInitiated, includeLogs: false).start()
+        }
+    })
+
+    return contentNode
+}
+

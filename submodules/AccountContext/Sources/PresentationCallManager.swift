@@ -149,7 +149,8 @@ public protocol PresentationCall: AnyObject {
     var audioOutputState: Signal<([AudioSessionOutput], AudioSessionOutput?), NoError> { get }
     
     var canBeRemoved: Signal<Bool, NoError> { get }
-    
+    var canBeRemovedDelay: ((_ state: PresentationCallState?) -> Double?)? { get set }
+
     func answer()
     func hangUp() -> Signal<Bool, NoError>
     func rejectBusy()
