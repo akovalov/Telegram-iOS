@@ -108,7 +108,7 @@ final class CallControllerKeyButton: HighlightableButtonNode {
         
         self.containerNode.frame = self.bounds
         var index = 0
-        let nodeSize = CGSize(width: 29.0, height: self.bounds.size.height)
+        let nodeSize = CGSize(width: 28.0, height: self.bounds.size.height)
         for node in self.nodes {
             node.frame = CGRect(origin: CGPoint(x: CGFloat(index) * nodeSize.width, y: 0.0), size: nodeSize)
             index += 1

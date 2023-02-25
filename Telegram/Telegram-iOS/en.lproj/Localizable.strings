@@ -2585,7 +2585,8 @@ Unused sets are archived when you add more.";
 "Call.PhoneCallInProgressMessage" = "You can’t place a Telegram call if you’re already on a phone call.";
 "Call.RecordingDisabledMessage" = "Please end your call before recording a voice message.";
 
-"Call.EmojiDescription" = "If these emoji are the same on %@'s screen, this call is 100%% secure.";
+"Call.EmojiTitle" = "This call is end-to end encrypted";
+"Call.EmojiDescription" = "If the emoji are the same on %@'s screen, this call is 100%% secure.";
 
 "Message.VideoMessage" = "Video Message";
 

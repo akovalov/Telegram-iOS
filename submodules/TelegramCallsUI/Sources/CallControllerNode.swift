@@ -518,6 +518,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.toastNode = CallControllerToastContainerNode(strings: self.presentationData.strings)
         self.keyButtonNode = CallControllerKeyButton()
         self.keyButtonNode.accessibilityElementsHidden = false
+        self.keyButtonNode.highligthedChanged = { _ in }
 
         let accountContext = sharedContext.makeTempAccountContext(account: account)
         self.backgroundNodes = [
@@ -1647,8 +1648,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         transition.updateFrame(node: self.dimNode, frame: containerFullScreenFrame)
         
         if let keyPreviewNode = self.keyPreviewNode {
-            transition.updateFrame(node: keyPreviewNode, frame: containerFullScreenFrame)
-            keyPreviewNode.updateLayout(size: layout.size, transition: .immediate)
+            let keyPreviewSize = CGSize(width: 304, height: 225)
+            let keyPreviewFrame = CGRect(origin: CGPoint(x: containerFullScreenFrame.width / 2.0 - keyPreviewSize.width / 2.0, y: self.imageNode.frame.maxY - keyPreviewSize.height), size: keyPreviewSize)
+            transition.updateFrame(node: keyPreviewNode, frame: keyPreviewFrame)
+            keyPreviewNode.updateLayout(size: keyPreviewSize, transition: .immediate)
         }
 
         self.backgroundNodes.forEach { type, node in
@@ -1827,7 +1830,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     
     @objc func keyPressed() {
         if self.keyPreviewNode == nil, let keyText = self.keyTextData?.1, let peer = self.peer {
-            let keyPreviewNode = CallControllerKeyPreviewNode(keyText: keyText, infoText: self.presentationData.strings.Call_EmojiDescription(EnginePeer(peer).compactDisplayTitle).string.replacingOccurrences(of: "%%", with: "%"), dismiss: { [weak self] in
+            let titleText = self.presentationData.strings.Call_EmojiTitle
+            let infoText = self.presentationData.strings.Call_EmojiDescription(EnginePeer(peer).compactDisplayTitle).string.replacingOccurrences(of: "%%", with: "%")
+            let keyPreviewNode = CallControllerKeyPreviewNode(keyText: keyText, titleText: titleText, infoText: infoText, dismiss: { [weak self] in
                 if let _ = self?.keyPreviewNode {
                     self?.backPressed()
                 }
@@ -1835,14 +1840,28 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             
             self.containerNode.insertSubnode(keyPreviewNode, belowSubnode: self.statusNode)
             self.keyPreviewNode = keyPreviewNode
-            
+
             if let (validLayout, _) = self.validLayout {
-                keyPreviewNode.updateLayout(size: validLayout.size, transition: .immediate)
-                
+
+                let containerFullScreenFrame = CGRect(origin: CGPoint(), size: validLayout.size)
+                let keyPreviewSize = CGSize(width: 304, height: 225)
+                let keyPreviewFrame = CGRect(origin: CGPoint(x: containerFullScreenFrame.width / 2.0 - keyPreviewSize.width / 2.0, y: self.imageNode.frame.maxY - keyPreviewSize.height), size: keyPreviewSize)
+
+                keyPreviewNode.view.frame = CGRect(origin: CGPoint(x: self.keyButtonNode.frame.center.x - keyPreviewFrame.width / 2.0, y: self.keyButtonNode.frame.center.y - keyPreviewFrame.height / 2.0), size: keyPreviewFrame.size)
+                let transition = ContainedViewLayoutTransition.animated(duration: 0.3, curve: .spring)
+                transition.updateFrame(node: keyPreviewNode, frame: keyPreviewFrame)
+                keyPreviewNode.updateLayout(size: keyPreviewSize, transition: .immediate)
+
+                keyPreviewNode.animateIn(from: self.keyButtonNode.frame, fromNode: self.keyButtonNode, callState: self.callState)
+
+                self.imageNode.layer.animateScale(from: 1, to: 0, duration: 0.1, removeOnCompletion: false)
+                self.imageNode.layer.animateAlpha(from: 1, to: 0, duration: 0.1, removeOnCompletion: false)
+                self.audioLevelView.layer.animateScale(from: 1, to: 0, duration: 0.1, removeOnCompletion: false)
+                self.audioLevelView.layer.animateAlpha(from: 1, to: 0, duration: 0.1, removeOnCompletion: false)
+
                 self.keyButtonNode.isHidden = true
-                keyPreviewNode.animateIn(from: self.keyButtonNode.frame, fromNode: self.keyButtonNode)
             }
-            
+
             self.updateDimVisibility()
         }
     }
@@ -1854,6 +1873,13 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 self?.keyButtonNode.isHidden = false
                 keyPreviewNode?.removeFromSupernode()
             })
+            let transition = ContainedViewLayoutTransition.animated(duration: 0.3, curve: .spring)
+            let keyPreviewFrame = keyPreviewNode.frame
+            transition.updateFrame(node: keyPreviewNode, frame: CGRect(origin: CGPoint(x: self.keyButtonNode.frame.center.x - keyPreviewFrame.width / 2.0, y: self.keyButtonNode.frame.center.y - keyPreviewFrame.height / 2.0), size: keyPreviewFrame.size))
+            self.imageNode.layer.animateScale(from: 0, to: 1, duration: 0.1, removeOnCompletion: false)
+            self.imageNode.layer.animateAlpha(from: 0, to: 1, duration: 0.1, removeOnCompletion: false)
+            self.audioLevelView.layer.animateScale(from: 0, to: 1, duration: 0.1, removeOnCompletion: false)
+            self.audioLevelView.layer.animateAlpha(from: 0, to: 1, duration: 0.1, removeOnCompletion: false)
             self.updateDimVisibility()
         } else if self.hasVideoNodes {
             if let (layout, navigationHeight) = self.validLayout {
