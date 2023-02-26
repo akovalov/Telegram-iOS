@@ -1236,6 +1236,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             if self.keyPreviewNode != nil {
                 backPressed()
             }
+            self.keyTooltipScreen?.dismiss()
             let presentRating = reportRating || self.forceReportRating
             if presentRating {
                 self.showRating(callId: callId)
@@ -1293,16 +1294,16 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
         let _ = (ApplicationSpecificNotice.getCallKeyTip(accountManager: self.sharedContext.accountManager)
                  |> deliverOnMainQueue).start(next: { [weak self] value in
-            guard let strongSelf = self, !value else {
+            guard let strongSelf = self, value != true else {
                 return
             }
             let location = strongSelf.keyButtonNode.frame
             let tooltip = TooltipScreen(account: strongSelf.account, text: strongSelf.presentationData.strings.Call_EncryptionKey, style: .light, icon: nil, customContentNode: nil, location: .point(location.offsetBy(dx: 0.0, dy: 10.0), .bottom), displayDuration: .custom(Double.greatestFiniteMagnitude), textInset: 9.0, customFontSize: 15.0, shouldDismissOnTouch: { [weak self] point in
                 guard let strongSelf = self else {
-                    return
+                    return .ignore
                 }
                 if strongSelf.keyTooltipScreen?.tooltipFrame.contains(point) == true {
-                    let _ = ApplicationSpecificNotice.setCallKeyTip(accountManager: strongSelf.context.sharedContext.accountManager).start()
+                    let _ = ApplicationSpecificNotice.setCallKeyTip(accountManager: strongSelf.sharedContext.accountManager, value: true).start()
                     return .dismiss(consume: true)
                 } else {
                     return .ignore
@@ -1311,11 +1312,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             strongSelf.keyTooltipScreen = tooltip
             strongSelf.present?(tooltip)
         })
-    }
-
-    private func hideKeyTooltip() {
-
-
     }
 
     @objc
@@ -1955,6 +1951,13 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 self.audioLevelView.layer.animateAlpha(from: 1, to: 0, duration: 0.1, removeOnCompletion: false)
 
                 self.keyButtonNode.isHidden = true
+
+                self.keyTooltipScreen?.dismiss { [weak self] in
+                    guard let strongSelf = self else {
+                        return
+                    }
+                    let _ = ApplicationSpecificNotice.setCallKeyTip(accountManager: strongSelf.sharedContext.accountManager, value: true).start()
+                }
             }
 
             self.updateDimVisibility()

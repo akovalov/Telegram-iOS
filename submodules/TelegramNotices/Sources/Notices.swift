@@ -1305,19 +1305,19 @@ public struct ApplicationSpecificNotice {
         }
     }
 
-    public static func getCallKeyTip(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Bool, NoError> {
-        return accountManager.transaction { transaction -> Bool in
-            if let _ = transaction.getNotice(ApplicationSpecificNoticeKeys.callKeyTip())?.get(ApplicationSpecificBoolNotice.self) {
-                return true
+    public static func getCallKeyTip(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Bool?, NoError> {
+        return accountManager.transaction { transaction -> Bool? in
+            if let value = transaction.getNotice(ApplicationSpecificNoticeKeys.callKeyTip())?.get(ApplicationSpecificVariantNotice.self) {
+                return value.value
             } else {
-                return false
+                return nil
             }
         }
     }
 
-    public static func setCallKeyTip(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Void, NoError> {
+    public static func setCallKeyTip(accountManager: AccountManager<TelegramAccountManagerTypes>, value: Bool) -> Signal<Void, NoError> {
         return accountManager.transaction { transaction -> Void in
-            if let entry = CodableEntry(ApplicationSpecificBoolNotice()) {
+            if let entry = CodableEntry(ApplicationSpecificVariantNotice(value: value)) {
                 transaction.setNotice(ApplicationSpecificNoticeKeys.callKeyTip(), entry)
             }
         }
