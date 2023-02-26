@@ -1248,21 +1248,42 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
     private func showRating(callId: CallId) {
 
-        let node = callRatingNode(sharedContext: self.sharedContext, account: self.account, callId: callId, userInitiated: false, isVideo: self.call.isVideo, present: { [weak self] c in
+        let ratingNode = callRatingNode(sharedContext: self.sharedContext, account: self.account, callId: callId, userInitiated: false, isVideo: self.call.isVideo, present: { [weak self] c in
             (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true))
             self?.present?(c)
         }, rated: { [weak self] in
             (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true) |> delay(1.0, queue: Queue.mainQueue()))
         })
 
-        let size = CGSize(width: 304, height: 142)
+        let closeButton = CloseButtonNode()
+
         if let validSize = self.validLayout?.0.size {
-            node.frame = CGRect(origin: CGPoint(x: validSize.width / 2.0 - size.width / 2.0, y: validSize.height / 2.0 + 57.0 / 2.0 + 50), size: size)
-            node.view.layer.contentsScale = 0
-            node.layer.animateScale(from: 0, to: 1, duration: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
-            _ = node.updateLayout(size: size, transition: .immediate)
+
+            let size = CGSize(width: 304, height: 142)
+            ratingNode.frame = CGRect(origin: CGPoint(x: validSize.width / 2.0 - size.width / 2.0, y: validSize.height / 2.0 + 57.0 / 2.0 + 50), size: size)
+            ratingNode.view.layer.contentsScale = 0
+            ratingNode.layer.animateScale(from: 0, to: 1, duration: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+            _ = ratingNode.updateLayout(size: size, transition: .immediate)
         }
-        self.containerNode.addSubnode(node)
+        self.containerNode.addSubnode(ratingNode)
+
+        let bgNode = self.containerNode
+        let closeHeight = closeButton.updateLayout(constrainedWidth: bgNode.frame.width, transition: .immediate)
+        closeButton.frame = CGRect(x: 0, y: buttonsNode.frame.minY, width: bgNode.frame.width, height: closeHeight)
+        bgNode.addSubnode(closeButton)
+        closeButton.addTopTitle(onNode: bgNode)
+
+        if let time = self.call.canBeRemovedDelay?(self.callState) {
+            closeButton.animate(time: time)
+        }
+
+        closeButton.addTarget(self, action: #selector(self.closePressed), forControlEvents: .touchUpInside)
+    }
+
+    @objc
+    private func closePressed() {
+
+        (self.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true))
     }
     
     private func updateToastContent() {
@@ -2314,5 +2335,80 @@ final class CallPanGestureRecognizer: UIPanGestureRecognizer {
     
     override public func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
         super.touchesMoved(touches, with: event)
+    }
+}
+
+private class CloseButtonNode: ASButtonNode {
+
+    private let topNode: ASDisplayNode
+    private let topTitleNode: ASTextNode
+    private let bgTitleNode: ASTextNode
+    private let effectView: UIVisualEffectView
+
+    override init() {
+
+        self.topNode = ASDisplayNode()
+        self.topTitleNode = ASTextNode()
+        self.bgTitleNode = ASTextNode()
+
+        self.effectView = UIVisualEffectView()
+
+        super.init()
+
+        self.view.addSubview(self.effectView)
+        self.addSubnode(self.bgTitleNode)
+        self.addSubnode(self.topNode)
+        self.topNode.addSubnode(self.topTitleNode)
+    }
+
+    override func didLoad() {
+        super.didLoad()
+
+        self.effectView.effect = UIBlurEffect(style: .light)
+        self.effectView.alpha = 0.5
+        self.effectView.layer.cornerRadius = 14
+        self.effectView.layer.masksToBounds = true
+
+        self.topNode.backgroundColor = .white
+        self.topNode.layer.cornerRadius = 14
+        self.topNode.layer.masksToBounds = true
+
+        self.topTitleNode.attributedText = NSAttributedString(string: "Close", font: Font.semibold(17.0), textColor: UIColor(rgb: 0x616AD5), paragraphAlignment: .center)
+//        self.topTitleNode.layer.compositingFilter = "sourceOverCompositing"
+
+        self.bgTitleNode.attributedText = NSAttributedString(string: "Close", font: Font.semibold(17.0), textColor: UIColor.white, paragraphAlignment: .center)
+    }
+
+    func updateLayout(constrainedWidth: CGFloat, transition: ContainedViewLayoutTransition) -> CGFloat {
+
+        let buttonSize = CGSize(width: 304, height: 50)
+        let buttonFrame = CGRect(x: constrainedWidth / 2.0 - buttonSize.width / 2.0, y: 0, width: buttonSize.width, height: buttonSize.height)
+        transition.updateFrame(node: self.topNode, frame: buttonFrame)
+
+        self.effectView.frame = buttonFrame
+
+        let titleSize = self.topTitleNode.measure(self.topNode.frame.size)
+        transition.updateFrame(node: self.topTitleNode, frame: CGRect(origin: CGPoint(x: self.topNode.frame.width / 2.0 - titleSize.width / 2.0, y: self.topNode.frame.height / 2.0 - titleSize.height / 2.0), size: titleSize))
+        transition.updateFrame(node: self.bgTitleNode, frame: CGRect(origin: CGPoint(x: constrainedWidth / 2.0 - titleSize.width / 2.0, y: buttonSize.height / 2.0 - titleSize.height / 2.0), size: titleSize))
+
+        return buttonSize.height
+    }
+
+    func addTopTitle(onNode: ASDisplayNode) {
+
+//        onNode.addSubnode(self.topTitleNode)
+//        let newOrigin = self.topNode.convert(self.topTitleNode.frame.origin, to: onNode)
+//        self.topTitleNode.frame = CGRect(origin: newOrigin, size: self.topTitleNode.frame.size)
+    }
+
+    func animate(time: Double) {
+
+        let maskLayer = CAShapeLayer()
+        maskLayer.frame = self.topNode.bounds
+        maskLayer.path = UIBezierPath(roundedRect: maskLayer.bounds, cornerRadius: 4).cgPath
+
+        self.topNode.layer.mask = maskLayer
+
+        maskLayer.animatePosition(from: maskLayer.position, to: CGPoint(x: self.topNode.frame.width * 1.5, y: self.topNode.frame.midY), duration: time, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false)
     }
 }

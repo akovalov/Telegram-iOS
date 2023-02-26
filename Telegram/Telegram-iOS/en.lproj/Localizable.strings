@@ -4408,7 +4408,8 @@ This may take a while, depending on the size of the database. Please keep the ap
 Sorry for the inconvenience.";
 
 "Call.Mute" = "mute";
-"Call.Camera" = "video";
+"Call.Camera" = "camera";
+"Call.Video" = "video";
 "Call.Flip" = "flip";
 "Call.End" = "end";
 "Call.Speaker" = "speaker";
