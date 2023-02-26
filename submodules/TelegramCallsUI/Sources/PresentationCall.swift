@@ -93,7 +93,7 @@ public final class PresentationCallImpl: PresentationCall {
     
     private let debugInfoValue = Promise<(String, String)>(("", ""))
     
-    private let canBeRemovedPromise = Promise<Bool>(false)
+    let canBeRemovedPromise = Promise<Bool>(false)
     private var didSetCanBeRemoved = false
     public var canBeRemoved: Signal<Bool, NoError> {
         return self.canBeRemovedPromise.get()

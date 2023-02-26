@@ -1231,21 +1231,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
             let presentRating = true || reportRating//reportRating || self.forceReportRating
             if presentRating {
-                let node = callRatingNode(sharedContext: self.sharedContext, account: self.account, callId: callId, userInitiated: false, isVideo: self.call.isVideo, push: { [weak self] c in
-                    self?.push?(c)
-                })
-                let size = CGSize(width: 304, height: 142)
-                if let validSize = self.validLayout?.0.size {
-                    node.frame = CGRect(origin: CGPoint(x: validSize.width / 2.0 - size.width / 2.0, y: validSize.height / 2.0 + 57.0 / 2.0 + 50), size: size)
-                    node.view.layer.contentsScale = 0
-                    node.layer.animateScale(from: 0, to: 1, duration: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
-                    _ = node.updateLayout(size: size, transition: .immediate)
-                }
-                self.containerNode.addSubnode(node)
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-                    self?.callEnded?(false)
-                }
+                self.showRating(callId: callId)
             } else {
                 self.callEnded?(false)
             }
@@ -1258,6 +1244,25 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     func updateAudioLevel(_ audioLevel: Float) {
 
         self.audioLevelView.updateLevel(CGFloat(audioLevel), immediately: false)
+    }
+
+    private func showRating(callId: CallId) {
+
+        let node = callRatingNode(sharedContext: self.sharedContext, account: self.account, callId: callId, userInitiated: false, isVideo: self.call.isVideo, present: { [weak self] c in
+            (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true))
+            self?.present?(c)
+        }, rated: { [weak self] in
+            (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true) |> delay(1.0, queue: Queue.mainQueue()))
+        })
+
+        let size = CGSize(width: 304, height: 142)
+        if let validSize = self.validLayout?.0.size {
+            node.frame = CGRect(origin: CGPoint(x: validSize.width / 2.0 - size.width / 2.0, y: validSize.height / 2.0 + 57.0 / 2.0 + 50), size: size)
+            node.view.layer.contentsScale = 0
+            node.layer.animateScale(from: 0, to: 1, duration: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+            _ = node.updateLayout(size: size, transition: .immediate)
+        }
+        self.containerNode.addSubnode(node)
     }
     
     private func updateToastContent() {

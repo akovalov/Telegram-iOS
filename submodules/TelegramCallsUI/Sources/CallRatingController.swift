@@ -300,7 +300,7 @@ public func callRatingController(sharedContext: SharedAccountContext, account: A
     return controller
 }
 
-public func callRatingNode(sharedContext: SharedAccountContext, account: Account, callId: CallId, userInitiated: Bool, isVideo: Bool, push: @escaping (ViewController) -> Void) -> AlertContentNode {
+public func callRatingNode(sharedContext: SharedAccountContext, account: Account, callId: CallId, userInitiated: Bool, isVideo: Bool, present: @escaping (ViewController) -> Void, rated: @escaping () -> Void) -> AlertContentNode {
     let presentationData = sharedContext.currentPresentationData.with { $0 }
     let theme = presentationData.theme
     let strings = presentationData.strings
@@ -310,9 +310,10 @@ public func callRatingNode(sharedContext: SharedAccountContext, account: Account
     contentNode = CallRatingAlertContentNode(theme: AlertControllerTheme(presentationData: presentationData), ptheme: theme, strings: strings, actions: [], dismiss: {
     }, apply: { rating in
         if rating < 4 {
-            push(callFeedbackController(sharedContext: sharedContext, account: account, callId: callId, rating: rating, userInitiated: userInitiated, isVideo: isVideo))
+            present(callFeedbackController(sharedContext: sharedContext, account: account, callId: callId, rating: rating, userInitiated: userInitiated, isVideo: isVideo))
         } else {
             let _ = rateCallAndSendLogs(engine: TelegramEngine(account: account), callId: callId, starsCount: rating, comment: "", userInitiated: userInitiated, includeLogs: false).start()
+            rated()
         }
     })
 
