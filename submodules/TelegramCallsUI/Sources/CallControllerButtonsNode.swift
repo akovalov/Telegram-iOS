@@ -284,7 +284,7 @@ final class CallControllerButtonsNode: ASDisplayNode {
             let bottomButtonsWidth = CGFloat(bottomButtons.count) * largeButtonSize + CGFloat(bottomButtons.count - 1) * bottomButtonsSpacing
             var bottomButtonsLeftOffset = floor((width - bottomButtonsWidth) / 2.0)
             for button in bottomButtons {
-                buttons.append(PlacedButton(button: button, frame: CGRect(origin: CGPoint(x: bottomButtonsLeftOffset, y: largeButtonSize + topBottomSpacing), size: CGSize(width: largeButtonSize, height: largeButtonSize))))
+                buttons.append(PlacedButton(button: button, frame: CGRect(origin: CGPoint(x: bottomButtonsLeftOffset, y: largeButtonSize + 10), size: CGSize(width: largeButtonSize, height: largeButtonSize))))
                 bottomButtonsLeftOffset += largeButtonSize + bottomButtonsSpacing
             }
             
