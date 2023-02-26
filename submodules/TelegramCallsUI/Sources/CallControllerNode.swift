@@ -1226,8 +1226,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
         
         if case let .terminated(id, _, reportRating) = callState.state, let callId = id {
-            [self.buttonsNode, self.keyButtonNode, self.backButtonNode, self.backButtonArrowNode].forEach { node in
+            [self.buttonsNode, self.keyButtonNode, self.backButtonNode, self.backButtonArrowNode, self.toastNode].forEach { node in
                 node.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+            }
+            if self.keyPreviewNode != nil {
+                backPressed()
             }
             let presentRating = reportRating || self.forceReportRating
             if presentRating {
@@ -1313,7 +1316,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                     self.displayToastsAfterTimestamp = CACurrentMediaTime() + 1.5
                 }
             }
-            if self.isMuted, let (availableOutputs, _) = self.audioOutputState, availableOutputs.count > 2 {
+            if self.isMuted, let (availableOutputs, _) = self.audioOutputState, !availableOutputs.isEmpty {
                 toastContent.insert(.mute)
             }
             self.toastContent = toastContent
@@ -1671,9 +1674,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         let buttonsCollapsedOriginY = self.pictureInPictureTransitionFraction > 0.0 ? layout.size.height + 30.0 : layout.size.height + 10.0
         let buttonsOriginY = interpolate(from: buttonsCollapsedOriginY, to: defaultButtonsOriginY, value: uiDisplayTransition)
         
-        let toastHeight = self.toastNode.updateLayout(strings: self.presentationData.strings, content: self.toastContent, constrainedWidth: layout.size.width, bottomInset: layout.intrinsicInsets.bottom + buttonsHeight, transition: transition)
-        
-        let toastSpacing: CGFloat = 22.0
+        var toastHeight = self.toastNode.updateLayout(strings: self.presentationData.strings, content: self.toastContent, constrainedWidth: layout.size.width, bottomInset: layout.intrinsicInsets.bottom + buttonsHeight, transition: transition)
+        if toastHeight == 0 {
+            toastHeight = 30.0
+        }
+        let toastSpacing: CGFloat = 16.0
         let toastCollapsedOriginY = self.pictureInPictureTransitionFraction > 0.0 ? layout.size.height : layout.size.height - max(layout.intrinsicInsets.bottom, 20.0) - toastHeight
         let toastOriginY = interpolate(from: toastCollapsedOriginY, to: defaultButtonsOriginY - toastSpacing - toastHeight, value: uiDisplayTransition)
         
