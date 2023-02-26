@@ -9,6 +9,8 @@ import TelegramPresentationData
 import TelegramVoip
 import AccountContext
 import AppBundle
+import AnimatedStickerNode
+import TelegramAnimatedStickerNode
 
 private final class CallRatingAlertContentNode: AlertContentNode {
     private let strings: PresentationStrings
@@ -30,6 +32,8 @@ private final class CallRatingAlertContentNode: AlertContentNode {
     private var validLayout: CGSize?
 
     private let effectView: UIVisualEffectView
+
+    private let ratedStarAnimationNode: AnimatedStickerNode
 
     override var dismissOnOutsideTap: Bool {
         return self.isUserInteractionEnabled
@@ -70,10 +74,8 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         self.actionVerticalSeparators = actionVerticalSeparators
 
         self.effectView = UIVisualEffectView()
-        self.effectView.effect = UIBlurEffect(style: .light)
-        self.effectView.clipsToBounds = true
-        self.effectView.layer.cornerRadius = 20.0
-        self.effectView.alpha = 0.8
+
+        self.ratedStarAnimationNode = DefaultAnimatedStickerNodeImpl()
 
         super.init()
 
@@ -99,7 +101,10 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         for separatorNode in self.actionVerticalSeparators {
             self.addSubnode(separatorNode)
         }
-        
+
+        self.ratedStarAnimationNode.alpha = 0
+        self.starContainerNode.addSubnode(self.ratedStarAnimationNode)
+
         self.updateTheme(theme)
     }
     
@@ -111,6 +116,14 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         super.didLoad()
         
         self.starContainerNode.view.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(self.panGesture(_:))))
+
+        self.effectView.effect = UIBlurEffect(style: .light)
+        self.effectView.clipsToBounds = true
+        self.effectView.layer.cornerRadius = 20.0
+        self.effectView.alpha = 0.8
+
+        self.ratedStarAnimationNode.isUserInteractionEnabled = false
+        self.ratedStarAnimationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "CallRated"), width: 256, height: 256, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
     }
     
     @objc func panGesture(_ gestureRecognizer: UIPanGestureRecognizer) {
@@ -166,6 +179,7 @@ private final class CallRatingAlertContentNode: AlertContentNode {
                 self.apply(rating)
             }
         }
+        playRatedAnimation()
     }
     
     override func updateTheme(_ theme: AlertControllerTheme) {
@@ -238,6 +252,28 @@ private final class CallRatingAlertContentNode: AlertContentNode {
         let resultSize = CGSize(width: size.width, height: titleSize.height + textSize.height + starSize.height + 40.0)
         
         return resultSize
+    }
+
+    private func playRatedAnimation() {
+
+        guard let rating = self.rating else {
+            return
+        }
+        let starIndex = rating - 1
+        let starButton = self.starNodes[starIndex]
+        let animationSize = CGSize(width: 120, height: 120)
+        ratedStarAnimationNode.updateLayout(size: animationSize)
+        ratedStarAnimationNode.frame = CGRect(origin: CGPoint(x: starButton.frame.midX - animationSize.width / 2.0, y: starButton.frame.midY - animationSize.height / 2.0), size: animationSize)
+
+        ratedStarAnimationNode.visibility = true
+        ratedStarAnimationNode.alpha = 1
+        ratedStarAnimationNode.playOnce()
+
+        self.starNodes[0...starIndex].forEach { star in
+            star.layer.animateScale(from: 1, to: 1.1, duration: 0.07, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false) { [weak star] _ in
+                star?.layer.animateScale(from: 1.1, to: 1.0, duration: 0.07, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+            }
+        }
     }
 }
 

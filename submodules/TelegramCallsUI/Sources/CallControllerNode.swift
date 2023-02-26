@@ -492,15 +492,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.shouldStayHiddenUntilConnection = shouldStayHiddenUntilConnection
         self.easyDebugAccess = easyDebugAccess
         self.call = call
-        self.call.canBeRemovedDelay = { callState in
-            if case let .terminated(_, _, reportRating) = callState?.state {
-                let presentRating = true || reportRating//reportRating || self.forceReportRating
-                if presentRating {
-                    return 5.0
-                }
-            }
-            return nil
-        }
 
         self.containerTransformationNode = ASDisplayNode()
         self.containerTransformationNode.clipsToBounds = true
@@ -835,6 +826,16 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
 
         self.audioLevelView.startAnimating()
+
+        self.call.canBeRemovedDelay = { [weak self] callState in
+            if case let .terminated(_, _, reportRating) = callState?.state {
+                let presentRating = reportRating || self?.forceReportRating == true
+                if presentRating {
+                    return 5.0
+                }
+            }
+            return nil
+        }
     }
     
     func updatePeer(accountPeer: Peer, peer: Peer, hasOther: Bool) {
@@ -1225,11 +1226,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
         
         if case let .terminated(id, _, reportRating) = callState.state, let callId = id {
-
-            self.buttonsNode.isHidden = true
-            self.keyButtonNode.isHidden = true
-
-            let presentRating = true || reportRating//reportRating || self.forceReportRating
+            [self.buttonsNode, self.keyButtonNode, self.backButtonNode, self.backButtonArrowNode].forEach { node in
+                node.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+            }
+            let presentRating = reportRating || self.forceReportRating
             if presentRating {
                 self.showRating(callId: callId)
             } else {
@@ -1249,8 +1249,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     private func showRating(callId: CallId) {
 
         let ratingNode = callRatingNode(sharedContext: self.sharedContext, account: self.account, callId: callId, userInitiated: false, isVideo: self.call.isVideo, present: { [weak self] c in
-            (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true))
-            self?.present?(c)
+            (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true) |> delay(1.0, queue: Queue.mainQueue()))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.present?(c)
+            }
         }, rated: { [weak self] in
             (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true) |> delay(1.0, queue: Queue.mainQueue()))
         })
