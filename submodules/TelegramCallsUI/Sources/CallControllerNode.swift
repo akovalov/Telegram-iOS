@@ -19,6 +19,7 @@ import DeviceAccess
 import ContextUI
 import WallpaperBackgroundNode
 import AudioBlob
+import TelegramNotices
 
 private func interpolateFrame(from fromValue: CGRect, to toValue: CGRect, t: CGFloat) -> CGRect {
     return CGRect(x: floorToScreenPixels(toValue.origin.x * t + fromValue.origin.x * (1.0 - t)), y: floorToScreenPixels(toValue.origin.y * t + fromValue.origin.y * (1.0 - t)), width: floorToScreenPixels(toValue.size.width * t + fromValue.size.width * (1.0 - t)), height: floorToScreenPixels(toValue.size.height * t + fromValue.size.height * (1.0 - t)))
@@ -482,6 +483,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     }
     private var backgroundType: BackgroundType = .blueViolet
     private var backgroundNodes: [BackgroundType: WallpaperBackgroundNode]
+
+    private weak var keyTooltipScreen: TooltipScreen?
 
     init(sharedContext: SharedAccountContext, account: Account, presentationData: PresentationData, statusBar: StatusBar, debugInfo: Signal<(String, String), NoError>, shouldStayHiddenUntilConnection: Bool = false, easyDebugAccess: Bool, call: PresentationCall) {
         self.sharedContext = sharedContext
@@ -1175,6 +1178,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                     if let (layout, navigationBarHeight) = self.validLayout {
                         self.containerLayoutUpdated(layout, navigationBarHeight: navigationBarHeight, transition: .immediate)
                     }
+                    self.showKeyTooltip()
                 }
                 
                 statusValue = .timer({ value, measure in
@@ -1283,6 +1287,35 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
 
         closeButton.addTarget(self, action: #selector(self.closePressed), forControlEvents: .touchUpInside)
+    }
+
+    private func showKeyTooltip() {
+
+        let _ = (ApplicationSpecificNotice.getCallKeyTip(accountManager: self.sharedContext.accountManager)
+                 |> deliverOnMainQueue).start(next: { [weak self] value in
+            guard let strongSelf = self, !value else {
+                return
+            }
+            let location = strongSelf.keyButtonNode.frame
+            let tooltip = TooltipScreen(account: strongSelf.account, text: strongSelf.presentationData.strings.Call_EncryptionKey, style: .light, icon: nil, customContentNode: nil, location: .point(location.offsetBy(dx: 0.0, dy: 10.0), .bottom), displayDuration: .custom(Double.greatestFiniteMagnitude), textInset: 9.0, customFontSize: 15.0, shouldDismissOnTouch: { [weak self] point in
+                guard let strongSelf = self else {
+                    return
+                }
+                if strongSelf.keyTooltipScreen?.tooltipFrame.contains(point) == true {
+                    let _ = ApplicationSpecificNotice.setCallKeyTip(accountManager: strongSelf.context.sharedContext.accountManager).start()
+                    return .dismiss(consume: true)
+                } else {
+                    return .ignore
+                }
+            })
+            strongSelf.keyTooltipScreen = tooltip
+            strongSelf.present?(tooltip)
+        })
+    }
+
+    private func hideKeyTooltip() {
+
+
     }
 
     @objc

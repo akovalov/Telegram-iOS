@@ -55,16 +55,22 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
     private var isArrowInverted: Bool = false
     
     private let inset: CGFloat
+    private let textInset: CGFloat
     
     private var validLayout: ContainerViewLayout?
-    
-    init(account: Account, text: String, textEntities: [MessageTextEntity], style: TooltipScreen.Style, icon: TooltipScreen.Icon?, customContentNode: TooltipCustomContentNode? = nil, location: TooltipScreen.Location, displayDuration: TooltipScreen.DisplayDuration, inset: CGFloat = 13.0, shouldDismissOnTouch: @escaping (CGPoint) -> TooltipScreen.DismissOnTouch, requestDismiss: @escaping () -> Void, openActiveTextItem: ((TooltipActiveTextItem, TooltipActiveTextAction) -> Void)?) {
+
+    var tooltipFrame: CGRect {
+        containerNode.frame
+    }
+
+    init(account: Account, text: String, textEntities: [MessageTextEntity], style: TooltipScreen.Style, icon: TooltipScreen.Icon?, customContentNode: TooltipCustomContentNode? = nil, location: TooltipScreen.Location, displayDuration: TooltipScreen.DisplayDuration, inset: CGFloat = 13.0, textInset: CGFloat = 4.0, customFontSize: CGFloat? = nil, shouldDismissOnTouch: @escaping (CGPoint) -> TooltipScreen.DismissOnTouch, requestDismiss: @escaping () -> Void, openActiveTextItem: ((TooltipActiveTextItem, TooltipActiveTextAction) -> Void)?) {
         self.tooltipStyle = style
         self.icon = icon
         self.customContentNode = customContentNode
         self.location = location
         self.displayDuration = displayDuration
         self.inset = inset
+        self.textInset = textInset
         self.shouldDismissOnTouch = shouldDismissOnTouch
         self.requestDismiss = requestDismiss
         self.openActiveTextItem = openActiveTextItem
@@ -125,7 +131,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         
         self.arrowContainer = ASDisplayNode()
         
-        let fontSize: CGFloat
+        var fontSize: CGFloat
         if case .light = style {
             self.effectView = UIVisualEffectView(effect: UIBlurEffect(style: .light))
             self.backgroundContainerNode.clipsToBounds = true
@@ -187,7 +193,11 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         } else {
             fontSize = 14.0
         }
-        
+
+        if let customFontSize = customFontSize {
+            fontSize = customFontSize
+        }
+
         self.textNode = ImmediateTextNode()
         self.textNode.displaysAsynchronously = false
         self.textNode.maximumNumberOfLines = 0
@@ -329,7 +339,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
             case .default, .gradient:
                 backgroundHeight = max(animationSize.height, textSize.height) + contentVerticalInset * 2.0
             case .light:
-                backgroundHeight = max(28.0, max(animationSize.height, textSize.height) + 4.0 * 2.0)
+                backgroundHeight = max(28.0, max(animationSize.height, textSize.height) + self.textInset * 2.0)
         }
                     
         var invertArrow = false
@@ -565,6 +575,8 @@ public final class TooltipScreen: ViewController {
     private let location: TooltipScreen.Location
     private let displayDuration: DisplayDuration
     private let inset: CGFloat
+    private let textInset: CGFloat
+    private var customFontSize: CGFloat?
     private let shouldDismissOnTouch: (CGPoint) -> TooltipScreen.DismissOnTouch
     private let openActiveTextItem: ((TooltipActiveTextItem, TooltipActiveTextAction) -> Void)?
     
@@ -579,8 +591,12 @@ public final class TooltipScreen: ViewController {
     public var becameDismissed: ((TooltipScreen) -> Void)?
     
     private var dismissTimer: Foundation.Timer?
-    
-    public init(account: Account, text: String, textEntities: [MessageTextEntity] = [], style: TooltipScreen.Style = .default, icon: TooltipScreen.Icon?, customContentNode: TooltipCustomContentNode? = nil, location: TooltipScreen.Location, displayDuration: DisplayDuration = .default, inset: CGFloat = 13.0, shouldDismissOnTouch: @escaping (CGPoint) -> TooltipScreen.DismissOnTouch, openActiveTextItem: ((TooltipActiveTextItem, TooltipActiveTextAction) -> Void)? = nil) {
+
+    public var tooltipFrame: CGRect {
+        controllerNode.tooltipFrame
+    }
+
+    public init(account: Account, text: String, textEntities: [MessageTextEntity] = [], style: TooltipScreen.Style = .default, icon: TooltipScreen.Icon?, customContentNode: TooltipCustomContentNode? = nil, location: TooltipScreen.Location, displayDuration: DisplayDuration = .default, inset: CGFloat = 13.0, textInset: CGFloat = 4.0, customFontSize: CGFloat? = nil, shouldDismissOnTouch: @escaping (CGPoint) -> TooltipScreen.DismissOnTouch, openActiveTextItem: ((TooltipActiveTextItem, TooltipActiveTextAction) -> Void)? = nil) {
         self.account = account
         self.text = text
         self.textEntities = textEntities
@@ -590,6 +606,8 @@ public final class TooltipScreen: ViewController {
         self.location = location
         self.displayDuration = displayDuration
         self.inset = inset
+        self.customFontSize = customFontSize
+        self.textInset = textInset
         self.shouldDismissOnTouch = shouldDismissOnTouch
         self.openActiveTextItem = openActiveTextItem
         
@@ -646,7 +664,7 @@ public final class TooltipScreen: ViewController {
     }
     
     override public func loadDisplayNode() {
-        self.displayNode = TooltipScreenNode(account: self.account, text: self.text, textEntities: self.textEntities, style: self.style, icon: self.icon, customContentNode: self.customContentNode, location: self.location, displayDuration: self.displayDuration, inset: self.inset, shouldDismissOnTouch: self.shouldDismissOnTouch, requestDismiss: { [weak self] in
+        self.displayNode = TooltipScreenNode(account: self.account, text: self.text, textEntities: self.textEntities, style: self.style, icon: self.icon, customContentNode: self.customContentNode, location: self.location, displayDuration: self.displayDuration, inset: self.inset, textInset: self.textInset, customFontSize: customFontSize, shouldDismissOnTouch: self.shouldDismissOnTouch, requestDismiss: { [weak self] in
             guard let strongSelf = self else {
                 return
             }

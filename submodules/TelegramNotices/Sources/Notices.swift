@@ -169,6 +169,7 @@ private enum ApplicationSpecificGlobalNotice: Int32 {
     case dismissedTrendingEmojiPacks = 35
     case audioRateOptionsTip = 36
     case translationSuggestion = 37
+    case callKeyTip = 38
     
     var key: ValueBoxKey {
         let v = ValueBoxKey(length: 4)
@@ -368,6 +369,10 @@ private struct ApplicationSpecificNoticeKeys {
     
     static func audioRateOptionsTip() -> NoticeEntryKey {
         return NoticeEntryKey(namespace: noticeNamespace(namespace: globalNamespace), key: ApplicationSpecificGlobalNotice.audioRateOptionsTip.key)
+    }
+
+    static func callKeyTip() -> NoticeEntryKey {
+        return NoticeEntryKey(namespace: noticeNamespace(namespace: globalNamespace), key: ApplicationSpecificGlobalNotice.callKeyTip.key)
     }
 }
 
@@ -1297,6 +1302,24 @@ public struct ApplicationSpecificNotice {
     
     public static func reset(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Void, NoError> {
         return accountManager.transaction { transaction -> Void in
+        }
+    }
+
+    public static func getCallKeyTip(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Bool, NoError> {
+        return accountManager.transaction { transaction -> Bool in
+            if let _ = transaction.getNotice(ApplicationSpecificNoticeKeys.callKeyTip())?.get(ApplicationSpecificBoolNotice.self) {
+                return true
+            } else {
+                return false
+            }
+        }
+    }
+
+    public static func setCallKeyTip(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Void, NoError> {
+        return accountManager.transaction { transaction -> Void in
+            if let entry = CodableEntry(ApplicationSpecificBoolNotice()) {
+                transaction.setNotice(ApplicationSpecificNoticeKeys.callKeyTip(), entry)
+            }
         }
     }
 }
