@@ -180,8 +180,8 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, U
         self.titleNode = ASTextNode()
         self.titleNode.attributedText = NSAttributedString(string: title, font: Font.bold(17.0), textColor: UIColor(rgb: 0xffffff))
                 
-        self.doneButton = SolidRoundedButtonNode(theme: SolidRoundedButtonTheme(backgroundColor: UIColor(rgb: 0xffffff), foregroundColor: UIColor(rgb: 0x4f5352)), font: .bold, height: 48.0, cornerRadius: 24.0, gloss: false)
-        self.doneButton.title = self.presentationData.strings.VoiceChat_VideoPreviewContinue
+        self.doneButton = SolidRoundedButtonNode(theme: SolidRoundedButtonTheme(backgroundColor: UIColor(rgb: 0xffffff), foregroundColor: UIColor(rgb: 0x4f5352)), font: .bold, height: 50.0, cornerRadius: 14.0, gloss: false)
+        self.doneButton.title = self.presentationData.strings.VoiceChat_VideoPreviewStartVideo
         
         if #available(iOS 12.0, *) {
             let broadcastPickerView = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 50, height: 52.0))
@@ -432,7 +432,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, U
             if isTablet {
                 contentSize = CGSize(width: 600.0, height: 960.0)
             } else {
-                contentSize = CGSize(width: layout.size.width, height: layout.size.height - insets.top - 8.0)
+                contentSize = CGSize(width: layout.size.width, height: layout.size.height)
             }
         }
         
@@ -456,7 +456,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, U
         transition.updateFrame(node: self.dimNode, frame: CGRect(origin: CGPoint(), size: layout.size))
         
         let titleSize = self.titleNode.measure(CGSize(width: contentFrame.width, height: .greatestFiniteMagnitude))
-        let titleFrame = CGRect(origin: CGPoint(x: floor((contentFrame.width - titleSize.width) / 2.0), y: 20.0), size: titleSize)
+        let titleFrame = CGRect(origin: CGPoint(x: floor((contentFrame.width - titleSize.width) / 2.0), y: insets.top + 8.0), size: titleSize)
         transition.updateFrame(node: self.titleNode, frame: titleFrame)
                 
         var previewSize: CGSize
@@ -467,16 +467,16 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, U
             previewSize = CGSize(width: min(contentFrame.width - layout.safeInsets.left - layout.safeInsets.right, ceil(previewHeight * previewAspectRatio)), height: previewHeight)
             previewFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((contentFrame.width - previewSize.width) / 2.0), y: 0.0), size: previewSize)
         } else {
-            previewSize = CGSize(width: contentFrame.width, height: min(contentFrame.height, ceil(contentFrame.width * previewAspectRatio)))
+            previewSize = CGSize(width: contentFrame.width, height: contentFrame.height)
             previewFrame = CGRect(origin: CGPoint(), size: previewSize)
         }
         transition.updateFrame(node: self.previewContainerNode, frame: previewFrame)
         transition.updateFrame(node: self.shimmerNode, frame: CGRect(origin: CGPoint(), size: previewFrame.size))
         self.shimmerNode.update(foregroundColor: UIColor(rgb: 0xffffff, alpha: 0.07))
         self.shimmerNode.updateAbsoluteRect(previewFrame, within: layout.size)
-        
+
         let cancelButtonSize = self.cancelButton.measure(CGSize(width: (previewFrame.width - titleSize.width) / 2.0, height: .greatestFiniteMagnitude))
-        let cancelButtonFrame = CGRect(origin: CGPoint(x: previewFrame.minX + 17.0, y: 20.0), size: cancelButtonSize)
+        let cancelButtonFrame = CGRect(origin: CGPoint(x: previewFrame.minX + 17.0, y: insets.top + 8.0), size: cancelButtonSize)
         transition.updateFrame(node: self.cancelButton, frame: cancelButtonFrame)
         
         self.cameraNode.frame =  CGRect(origin: CGPoint(), size: previewSize)
@@ -491,15 +491,15 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, U
             transition.updateFrame(node: self.placeholderIconNode, frame: CGRect(origin: CGPoint(x: floor((previewSize.width - imageSize.width) / 2.0), y: floorToScreenPixels(previewSize.height / 2.0) - imageSize.height - 8.0), size: imageSize))
         }
 
-        let buttonInset: CGFloat = 16.0
+        let buttonInsets: UIEdgeInsets = UIEdgeInsets(top: 0.0, left: 16.0, bottom: insets.bottom + 16.0, right: 16.0)
         let buttonMaxWidth: CGFloat = 360.0
         
-        let buttonWidth = min(buttonMaxWidth, contentFrame.width - buttonInset * 2.0)
+        let buttonWidth = min(buttonMaxWidth, contentFrame.width - buttonInsets.left - buttonInsets.right)
         let doneButtonHeight = self.doneButton.updateLayout(width: buttonWidth, transition: transition)
-        transition.updateFrame(node: self.doneButton, frame: CGRect(x: floorToScreenPixels((contentFrame.width - buttonWidth) / 2.0), y: previewFrame.maxY - doneButtonHeight - buttonInset, width: buttonWidth, height: doneButtonHeight))
+        transition.updateFrame(node: self.doneButton, frame: CGRect(x: floorToScreenPixels((contentFrame.width - buttonWidth) / 2.0), y: previewFrame.maxY - doneButtonHeight - buttonInsets.bottom, width: buttonWidth, height: doneButtonHeight))
         self.broadcastPickerView?.frame = self.doneButton.frame
         
-        let wheelFrame = CGRect(origin: CGPoint(x: 16.0 + previewFrame.minX, y: previewFrame.maxY - doneButtonHeight - buttonInset - 36.0 - 20.0), size: CGSize(width: previewFrame.width - 32.0, height: 36.0))
+        let wheelFrame = CGRect(origin: CGPoint(x: 16.0 + previewFrame.minX, y: previewFrame.maxY - doneButtonHeight - buttonInsets.bottom - 36.0 - 20.0), size: CGSize(width: previewFrame.width - 32.0, height: 36.0))
         self.wheelNode.updateLayout(size: wheelFrame.size, transition: transition)
         transition.updateFrame(node: self.wheelNode, frame: wheelFrame)
         
@@ -507,7 +507,7 @@ private class VoiceChatCameraPreviewControllerNode: ViewControllerTracingNode, U
     }
 }
 
-private let textFont = Font.with(size: 14.0, design: .camera, weight: .regular)
+private let textFont = Font.with(size: 14.0, design: .camera, weight: .semibold)
 private let selectedTextFont = Font.with(size: 14.0, design: .camera, weight: .semibold)
 
 private class WheelControlNode: ASDisplayNode, UIGestureRecognizerDelegate {
@@ -578,7 +578,7 @@ private class WheelControlNode: ASDisplayNode, UIGestureRecognizerDelegate {
             itemNode.accessibilityLabel = item.title
             itemNode.accessibilityTraits = [.button]
             itemNode.hitTestSlop = UIEdgeInsets(top: -10.0, left: -5.0, bottom: -10.0, right: -5.0)
-            itemNode.setTitle(item.title.uppercased(), with: textFont, with: .white, for: .normal)
+            itemNode.setTitle(item.title.uppercased(), with: textFont, with: .white.withAlphaComponent(0.5), for: .normal)
             itemNode.titleNode.shadowColor = UIColor.black.cgColor
             itemNode.titleNode.shadowOffset = CGSize()
             itemNode.titleNode.layer.shadowRadius = 2.0
@@ -632,7 +632,7 @@ private class WheelControlNode: ASDisplayNode, UIGestureRecognizerDelegate {
                 if itemNode.isSelected != isSelected {
                     itemNode.isSelected = isSelected
                     let title = itemNode.attributedTitle(for: .normal)?.string ?? ""
-                    itemNode.setTitle(title, with: isSelected ? selectedTextFont : textFont, with: isSelected ? UIColor(rgb: 0xffd60a) : .white, for: .normal)
+                    itemNode.setTitle(title, with: isSelected ? selectedTextFont : textFont, with: isSelected ? UIColor.white : .white.withAlphaComponent(0.5), for: .normal)
                     if isSelected {
                         itemNode.accessibilityTraits.insert(.selected)
                     } else {

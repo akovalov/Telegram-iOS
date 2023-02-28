@@ -6737,6 +6737,7 @@ Sorry for the inconvenience.";
 "VoiceChat.VideoPreviewFrontCamera" = "Front Camera";
 "VoiceChat.VideoPreviewBackCamera" = "Back Camera";
 "VoiceChat.VideoPreviewContinue" = "Continue";
+"VoiceChat.VideoPreviewStartVideo" = "Start Video";
 "VoiceChat.VideoPreviewShareScreenInfo" = "Everything on your screen\nwill be shared";
 
 "Gallery.SaveToGallery" = "Save to Gallery";
