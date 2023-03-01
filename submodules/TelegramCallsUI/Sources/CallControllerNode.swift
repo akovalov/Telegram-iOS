@@ -1231,7 +1231,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         
         if case let .terminated(id, _, reportRating) = callState.state, let callId = id {
             [self.buttonsNode, self.keyButtonNode, self.backButtonNode, self.backButtonArrowNode, self.toastNode].forEach { node in
-                node.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+                node.layer.animateAlpha(from: node.alpha, to: 0.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
             }
             if self.keyPreviewNode != nil {
                 backPressed()
@@ -1361,21 +1361,24 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         if case .active = callState.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
             visible = false
         }
-        
-        let currentVisible = self.dimNode.image == nil
-        if visible != currentVisible {
-            let color = visible ? UIColor(rgb: 0x000000, alpha: 0.3) : UIColor.clear
-            let image: UIImage? = visible ? nil : generateGradientImage(size: CGSize(width: 1.0, height: 640.0), colors: [UIColor.black.withAlphaComponent(0.3), UIColor.clear, UIColor.clear, UIColor.black.withAlphaComponent(0.3)], locations: [0.0, 0.22, 0.7, 1.0])
-            if case let .animated(duration, _) = transition {
-                UIView.transition(with: self.dimNode.view, duration: duration, options: .transitionCrossDissolve, animations: {
-                    self.dimNode.backgroundColor = color
-                    self.dimNode.image = image
-                }, completion: nil)
-            } else {
-                self.dimNode.backgroundColor = color
-                self.dimNode.image = image
-            }
+
+        if !self.dimNode.isHidden {
+            self.dimNode.isHidden = true
         }
+//        let currentVisible = self.dimNode.image == nil
+//        if visible != currentVisible {
+//            let color = visible ? UIColor(rgb: 0x000000, alpha: 0.3) : UIColor.clear
+//            let image: UIImage? = visible ? nil : generateGradientImage(size: CGSize(width: 1.0, height: 640.0), colors: [UIColor.black.withAlphaComponent(0.3), UIColor.clear, UIColor.clear, UIColor.black.withAlphaComponent(0.3)], locations: [0.0, 0.22, 0.7, 1.0])
+//            if case let .animated(duration, _) = transition {
+//                UIView.transition(with: self.dimNode.view, duration: duration, options: .transitionCrossDissolve, animations: {
+//                    self.dimNode.backgroundColor = color
+//                    self.dimNode.image = image
+//                }, completion: nil)
+//            } else {
+//                self.dimNode.backgroundColor = color
+//                self.dimNode.image = image
+//            }
+//        }
         self.statusNode.setVisible(visible || self.keyPreviewNode != nil, transition: transition)
     }
 
@@ -1735,7 +1738,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         transition.updateFrame(node: self.videoContainerNode, frame: containerFullScreenFrame)
         self.videoContainerNode.update(size: containerFullScreenFrame.size, transition: transition)
         
-        transition.updateAlpha(node: self.dimNode, alpha: pinchTransitionAlpha)
+//        transition.updateAlpha(node: self.dimNode, alpha: pinchTransitionAlpha)
         transition.updateFrame(node: self.dimNode, frame: containerFullScreenFrame)
         
         if let keyPreviewNode = self.keyPreviewNode {
