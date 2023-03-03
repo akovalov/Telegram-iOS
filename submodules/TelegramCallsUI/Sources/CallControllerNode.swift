@@ -490,6 +490,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
     private weak var keyTooltipScreen: TooltipScreen?
 
+    private let ratingShowingDuration = 5.0
+
     init(sharedContext: SharedAccountContext, account: Account, presentationData: PresentationData, statusBar: StatusBar, debugInfo: Signal<(String, String), NoError>, shouldStayHiddenUntilConnection: Bool = false, easyDebugAccess: Bool, call: PresentationCall) {
         self.sharedContext = sharedContext
         self.account = account
@@ -834,13 +836,15 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.audioLevelView.startAnimating()
 
         self.call.canBeRemovedDelay = { [weak self] callState in
-            if case let .terminated(_, _, reportRating) = callState?.state {
-                let presentRating = reportRating || self?.forceReportRating == true
-                if presentRating {
-                    return 5.0
-                }
+            if case let .terminated(_, _, reportRating) = callState?.state,
+               reportRating || self?.forceReportRating == true {
+                return self?.ratingShowingDuration
+            } else if case let .terminating(reason) = callState?.state,
+                      reason == .ended(.hungUp) {
+                return self?.ratingShowingDuration
+            } else {
+                return nil
             }
-            return nil
         }
     }
     
@@ -1242,6 +1246,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             if presentRating {
                 self.showRating(callId: callId)
             } else {
+                (self.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true) |> delay(1.0, queue: Queue.mainQueue()))
                 self.callEnded?(false)
             }
         }
