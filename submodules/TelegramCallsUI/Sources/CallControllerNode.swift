@@ -492,6 +492,17 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
     private let ratingShowingDuration = 5.0
 
+    private let statusToastNode: CallControllerToastContainerNode
+    private var statusToastContent: CallControllerToastContent? {
+        didSet {
+            if statusToastContent != oldValue {
+                if let (layout, navigationBarHeight) = self.validLayout {
+                    self.containerLayoutUpdated(layout, navigationBarHeight: navigationBarHeight, transition: .animated(duration: 0.3, curve: .easeInOut))
+                }
+            }
+        }
+    }
+
     init(sharedContext: SharedAccountContext, account: Account, presentationData: PresentationData, statusBar: StatusBar, debugInfo: Signal<(String, String), NoError>, shouldStayHiddenUntilConnection: Bool = false, easyDebugAccess: Bool, call: PresentationCall) {
         self.sharedContext = sharedContext
         self.account = account
@@ -536,9 +547,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             .orangeRed: createWallpaperBackgroundNode(context: accountContext, forChatDisplay: false)
         ]
 
-        
         self.audioLevelView = VoiceBlobView(frame: .zero, maxLevel: 1.5, smallBlobRange: (0, 0), mediumBlobRange: (0.69, 0.87), bigBlobRange: (0.71, 1.0))
         self.audioLevelView.setColor(.white)
+
+        self.statusToastNode = CallControllerToastContainerNode(strings: self.presentationData.strings)
 
         super.init()
         
@@ -580,7 +592,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.containerNode.addSubnode(self.keyButtonNode)
         self.containerNode.addSubnode(self.backButtonArrowNode)
         self.containerNode.addSubnode(self.backButtonNode)
-        
+        self.containerNode.addSubnode(self.statusToastNode)
+
         self.buttonsNode.mute = { [weak self] in
             self?.toggleMute?()
             self?.cancelScheduledUIHiding()
@@ -827,7 +840,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
         self.backgroundNodes.forEach { type, node in
             node.isHidden = type != .blueViolet
-            node.update(wallpaper: .gradient(TelegramWallpaper.Gradient(id: nil, colors: type.colors, settings: WallpaperSettings(rotation: 0))))
+            node.update(wallpaper: .gradient(TelegramWallpaper.Gradient(id: nil, colors: type.colors, settings: WallpaperSettings(blur: true, rotation: 0))))
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.backgroundNodes[.blueViolet]?.updateIsLooping(true)
@@ -1235,7 +1248,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
         
         if case let .terminated(id, _, reportRating) = callState.state, let callId = id {
-            [self.buttonsNode, self.keyButtonNode, self.backButtonNode, self.backButtonArrowNode, self.toastNode].forEach { node in
+            [self.buttonsNode, self.keyButtonNode, self.backButtonNode, self.backButtonArrowNode, self.toastNode, self.statusToastNode].forEach { node in
                 node.layer.animateAlpha(from: node.alpha, to: 0.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
             }
             if self.keyPreviewNode != nil {
@@ -1366,12 +1379,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     }
     
     private func updateDimVisibility(transition: ContainedViewLayoutTransition = .animated(duration: 0.3, curve: .easeInOut)) {
-        guard let callState = self.callState else {
-            return
-        }
 
         var isActiveVideo = false
-        if case .active = callState.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
+        if self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
             isActiveVideo = true
         }
         if isActiveVideo, self.keyPreviewNode != nil {
@@ -1397,11 +1407,19 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     private func updateBackground(forCallState callState: PresentationCallState) {
 
         let newBackgroundType: BackgroundType
-        if case .active = callState.state {
-            newBackgroundType = .blueGreen
-        } else {
+        switch callState.state {
+        case .active(_, let reception, _), .reconnecting(_, let reception, _):
+            if let reception, reception <= 1 {
+                newBackgroundType = .orangeRed
+            } else {
+                newBackgroundType = .blueGreen
+            }
+        default:
             newBackgroundType = .blueViolet
         }
+
+        statusToastContent = newBackgroundType == .orangeRed ? .weakNetwork : []
+
         guard self.backgroundType != newBackgroundType,
               let visibleNode = self.backgroundNodes.values.first(where: { !$0.isHidden }),
               let newVisibleNode = self.backgroundNodes[newBackgroundType]
@@ -1720,7 +1738,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         
         var toastHeight = self.toastNode.updateLayout(strings: self.presentationData.strings, content: self.toastContent, constrainedWidth: layout.size.width, bottomInset: layout.intrinsicInsets.bottom + buttonsHeight, transition: transition)
         if toastHeight == 0 {
-            toastHeight = 30.0
+            toastHeight = 28.0
         }
         let toastSpacing: CGFloat = 16.0
         let toastCollapsedOriginY = self.pictureInPictureTransitionFraction > 0.0 ? layout.size.height : layout.size.height - max(layout.intrinsicInsets.bottom, 20.0) - toastHeight
@@ -1788,7 +1806,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         transition.updateAlpha(node: self.toastNode, alpha: toastAlpha)
 
         var statusNodeFrameCenterY = containerFullScreenFrame.height / 2.0
-        if case .active = callState?.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
+        if self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
             statusNodeFrameCenterY = 120.0
         }
         let statusHeight = self.statusNode.updateLayout(constrainedWidth: layout.size.width, transition: transition)
@@ -1798,7 +1816,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         transition.updateFrame(node: self.toastNode, frame: CGRect(origin: CGPoint(x: 0.0, y: toastOriginY), size: CGSize(width: layout.size.width, height: toastHeight)))
         transition.updateFrame(node: self.buttonsNode, frame: CGRect(origin: CGPoint(x: 0.0, y: buttonsOriginY), size: CGSize(width: layout.size.width, height: buttonsHeight)))
         transition.updateAlpha(node: self.buttonsNode, alpha: overlayAlpha)
-        
+
+        let statusToastHeight = self.statusToastNode.updateLayout(strings: self.presentationData.strings, content: self.statusToastContent, constrainedWidth: layout.size.width, bottomInset: layout.intrinsicInsets.bottom + buttonsHeight, transition: transition)
+        let statusToastOriginY = self.statusNode.frame.maxY + 8.0
+        transition.updateFrame(node: self.statusToastNode, frame: CGRect(origin: CGPoint(x: 0.0, y: statusToastOriginY), size: CGSize(width: layout.size.width, height: statusToastHeight)))
+
         let fullscreenVideoFrame = containerFullScreenFrame
         let previewVideoFrame = self.calculatePreviewVideoRect(layout: layout, navigationHeight: navigationBarHeight)
         

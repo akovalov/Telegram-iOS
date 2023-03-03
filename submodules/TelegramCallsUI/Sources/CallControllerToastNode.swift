@@ -14,12 +14,14 @@ private enum ToastDescription: Equatable {
         case microphone
         case mute
         case battery
+        case weakNetwork
     }
     
     case camera
     case microphone
     case mute
     case battery
+    case weakNetwork
     
     var key: Key {
         switch self {
@@ -31,6 +33,8 @@ private enum ToastDescription: Equatable {
             return .mute
         case .battery:
             return .battery
+        case .weakNetwork:
+            return .weakNetwork
         }
     }
 }
@@ -46,6 +50,7 @@ struct CallControllerToastContent: OptionSet {
     public static let microphone = CallControllerToastContent(rawValue: 1 << 1)
     public static let mute = CallControllerToastContent(rawValue: 1 << 2)
     public static let battery = CallControllerToastContent(rawValue: 1 << 3)
+    public static let weakNetwork = CallControllerToastContent(rawValue: 1 << 4)
 }
 
 final class CallControllerToastContainerNode: ASDisplayNode {
@@ -93,6 +98,9 @@ final class CallControllerToastContainerNode: ASDisplayNode {
         if content.contains(.battery) {
             toasts.append(.battery)
         }
+        if content.contains(.weakNetwork) {
+            toasts.append(.weakNetwork)
+        }
         
         var transitions: [ToastDescription.Key: (ContainedViewLayoutTransition, CGFloat, Bool)] = [:]
         var validKeys: [ToastDescription.Key] = []
@@ -136,6 +144,12 @@ final class CallControllerToastContainerNode: ASDisplayNode {
                         key: .battery,
                         image: .battery,
                         text: strings.Call_BatteryLow(self.title).string
+                    )
+                case .weakNetwork:
+                    toastContent = CallControllerToastItemNode.Content(
+                        key: .weakNetwork,
+                        image: .weakNetwork,
+                        text: strings.Call_WeakNetwork
                     )
             }
             let toastHeight = toastNode.update(width: width, content: toastContent, transition: .immediate)
@@ -197,6 +211,7 @@ private class CallControllerToastItemNode: ASDisplayNode {
             case microphone
             case battery
             case mute
+            case weakNetwork
         }
         
         var key: ToastDescription.Key
@@ -274,6 +289,8 @@ private class CallControllerToastItemNode: ASDisplayNode {
                     image = generateTintedImage(image: UIImage(bundleImageName: "Call/CallToastBattery"), color: .white)
                 case .mute:
                     break
+                case .weakNetwork:
+                    break
             }
             
             if transition.isAnimated, let image = image, let previousContent = self.iconNode.image {
@@ -304,9 +321,9 @@ private class CallControllerToastItemNode: ASDisplayNode {
     }
     
     func animateIn() {
-        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.25, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
         self.layer.animateScale(from: 0.0, to: 1.05, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false, completion: { _ in
-            self.layer.animateScale(from: 1.05, to: 1.0, duration: 0.05, timingFunction: kCAMediaTimingFunctionSpring)
+            self.layer.animateScale(from: 1.05, to: 1.0, duration: 0.05, timingFunction: CAMediaTimingFunctionName.linear.rawValue)
         })
     }
     
