@@ -1266,6 +1266,20 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
         let hasIncomingVideoNode = self.incomingVideoNodeValue != nil && self.expandedVideoNode === self.incomingVideoNodeValue
         self.videoContainerNode.isPinchGestureEnabled = hasIncomingVideoNode
+
+        var isActiveCall = true
+        if case .terminated(_, _, _) = callState.state {
+            isActiveCall = false
+        } else if case .terminating(_) = callState.state {
+            isActiveCall = false
+        }
+
+        let isActiveVideo = self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil
+        if isActiveVideo || !isActiveCall {
+            audioLevelView.stopAnimating()
+        } else if isActiveCall {
+            audioLevelView.startAnimating()
+        }
     }
 
     func updateAudioLevel(_ audioLevel: Float) {
@@ -1380,10 +1394,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     
     private func updateDimVisibility(transition: ContainedViewLayoutTransition = .animated(duration: 0.3, curve: .easeInOut)) {
 
-        var isActiveVideo = false
-        if self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
-            isActiveVideo = true
-        }
+        let isActiveVideo = self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil
         if isActiveVideo, self.keyPreviewNode != nil {
             self.statusNode.setVisible(false, transition: .animated(duration: 0.25, curve: .spring))
         } else {
@@ -1418,12 +1429,21 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             newBackgroundType = .blueViolet
         }
 
+        let isActiveVideo = self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil
+
         statusToastContent = newBackgroundType == .orangeRed ? .weakNetwork : []
 
         guard self.backgroundType != newBackgroundType,
               let visibleNode = self.backgroundNodes.values.first(where: { !$0.isHidden }),
               let newVisibleNode = self.backgroundNodes[newBackgroundType]
         else {
+            if isActiveVideo {
+                self.backgroundNodes.values.forEach {
+                    $0.updateIsLooping(false)
+                }
+            } else if let visibleNode = self.backgroundNodes.values.first(where: { !$0.isHidden }) {
+                visibleNode.updateIsLooping(true)
+            }
             return
         }
         self.backgroundType = newBackgroundType
@@ -1435,7 +1455,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         visibleNode.layer.animateAlpha(from: 1, to: 0, duration: 0.5, removeOnCompletion: false) { _ in
             visibleNode.isHidden = true
             visibleNode.updateIsLooping(false)
-            newVisibleNode.updateIsLooping(true)
+            newVisibleNode.updateIsLooping(!isActiveVideo)
         }
     }
     
