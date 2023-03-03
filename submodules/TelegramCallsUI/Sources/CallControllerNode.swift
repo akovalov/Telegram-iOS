@@ -1292,13 +1292,20 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
     private func showKeyTooltip() {
 
+        var tooltipStyle: TooltipScreen.Style = .light
+        if case .active = callState?.videoState {
+            tooltipStyle = .dark
+        } else if case .active = callState?.remoteVideoState {
+            tooltipStyle = .dark
+        }
+        
         let _ = (ApplicationSpecificNotice.getCallKeyTip(accountManager: self.sharedContext.accountManager)
                  |> deliverOnMainQueue).start(next: { [weak self] value in
             guard let strongSelf = self, value != true else {
                 return
             }
             let location = strongSelf.keyButtonNode.frame
-            let tooltip = TooltipScreen(account: strongSelf.account, text: strongSelf.presentationData.strings.Call_EncryptionKey, style: .light, icon: nil, customContentNode: nil, location: .point(location.offsetBy(dx: 0.0, dy: 10.0), .bottom), displayDuration: .custom(Double.greatestFiniteMagnitude), textInset: 9.0, customFontSize: 15.0, shouldDismissOnTouch: { [weak self] point in
+            let tooltip = TooltipScreen(account: strongSelf.account, text: strongSelf.presentationData.strings.Call_EncryptionKey, style: tooltipStyle, icon: nil, customContentNode: nil, location: .point(location.offsetBy(dx: 0.0, dy: 10.0), .bottom), displayDuration: .custom(2.0), textInset: 9.0, customFontSize: 15.0, shouldDismissOnTouch: { [weak self] point in
                 guard let strongSelf = self else {
                     return .ignore
                 }

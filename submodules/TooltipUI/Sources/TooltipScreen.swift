@@ -150,6 +150,24 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
             }
             maskLayer.frame = CGRect(origin: CGPoint(), size: arrowSize)
             self.arrowContainer.layer.mask = maskLayer
+        } else if case .dark = style {
+            self.effectView = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+            self.backgroundContainerNode.clipsToBounds = true
+            self.backgroundContainerNode.cornerRadius = 14.0
+            if #available(iOS 13.0, *) {
+                self.backgroundContainerNode.layer.cornerCurve = .continuous
+            }
+            fontSize = 17.0
+
+            self.arrowEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .dark))
+            self.arrowContainer.view.addSubview(self.arrowEffectView!)
+
+            let maskLayer = CAShapeLayer()
+            if let path = try? svgPath("M85.882251,0 C79.5170552,0 73.4125613,2.52817247 68.9116882,7.02834833 L51.4264069,24.5109211 C46.7401154,29.1964866 39.1421356,29.1964866 34.4558441,24.5109211 L16.9705627,7.02834833 C12.4696897,2.52817247 6.36519576,0 0,0 L85.882251,0 ", scale: CGPoint(x: 0.333333, y: 0.333333), offset: CGPoint()) {
+                maskLayer.path = path.cgPath
+            }
+            maskLayer.frame = CGRect(origin: CGPoint(), size: arrowSize)
+            self.arrowContainer.layer.mask = maskLayer
         } else if case let .gradient(leftColor, rightColor) = style {
             self.gradientNode = ASDisplayNode()
             self.gradientNode?.setLayerBlock({
@@ -338,7 +356,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         switch self.tooltipStyle {
             case .default, .gradient:
                 backgroundHeight = max(animationSize.height, textSize.height) + contentVerticalInset * 2.0
-            case .light:
+        case .light, .dark:
                 backgroundHeight = max(28.0, max(animationSize.height, textSize.height) + self.textInset * 2.0)
         }
                     
@@ -563,6 +581,7 @@ public final class TooltipScreen: ViewController {
     public enum Style {
         case `default`
         case light
+        case dark
         case gradient(UIColor, UIColor)
     }
     
