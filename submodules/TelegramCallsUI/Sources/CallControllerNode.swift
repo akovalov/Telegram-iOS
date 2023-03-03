@@ -1365,8 +1365,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
         
         var visible = true
-        if case .active = callState.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
+        var statusTransition = transition
+        if case .active = callState.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil, self.keyPreviewNode != nil {
             visible = false
+            statusTransition = .animated(duration: 0.25, curve: .spring)
         }
 
         if !self.dimNode.isHidden {
@@ -1386,7 +1388,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 //                self.dimNode.image = image
 //            }
 //        }
-        self.statusNode.setVisible(visible || self.keyPreviewNode != nil, transition: transition)
+        self.statusNode.setVisible(visible, transition: statusTransition)
     }
 
     private func updateBackground(forCallState callState: PresentationCallState) {
@@ -1781,9 +1783,13 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         transition.updateAlpha(node: self.backButtonArrowNode, alpha: overlayAlpha)
         transition.updateAlpha(node: self.backButtonNode, alpha: overlayAlpha)
         transition.updateAlpha(node: self.toastNode, alpha: toastAlpha)
-        
+
+        var statusNodeFrameCenterY = containerFullScreenFrame.height / 2.0
+        if case .active = callState?.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
+            statusNodeFrameCenterY = 120.0
+        }
         let statusHeight = self.statusNode.updateLayout(constrainedWidth: layout.size.width, transition: transition)
-        transition.updateFrame(node: self.statusNode, frame: CGRect(origin: CGPoint(x: 0.0, y: containerFullScreenFrame.height / 2.0 - statusHeight / 2.0), size: CGSize(width: layout.size.width, height: statusHeight)))
+        transition.updateFrame(node: self.statusNode, frame: CGRect(origin: CGPoint(x: 0.0, y: statusNodeFrameCenterY - statusHeight / 2.0), size: CGSize(width: layout.size.width, height: statusHeight)))
         transition.updateAlpha(node: self.statusNode, alpha: overlayAlpha)
         
         transition.updateFrame(node: self.toastNode, frame: CGRect(origin: CGPoint(x: 0.0, y: toastOriginY), size: CGSize(width: layout.size.width, height: toastHeight)))
@@ -1971,6 +1977,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             }
 
             self.updateDimVisibility()
+
+            let _ = ApplicationSpecificNotice.setCallKeyTip(accountManager: self.sharedContext.accountManager, value: true).start()
         }
     }
     
