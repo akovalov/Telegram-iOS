@@ -51,6 +51,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
     private var arrowEffectView: UIView?
     private let animatedStickerNode: AnimatedStickerNode
     private let textNode: ImmediateTextNode
+    private let imageNode: ASImageNode
     
     private var isArrowInverted: Bool = false
     
@@ -224,7 +225,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         
         self.animatedStickerNode = DefaultAnimatedStickerNodeImpl()
         switch icon {
-        case .none:
+        case .none, .key:
             break
         case .chatListPress:
             self.animatedStickerNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "ChatListFoldersTooltip"), width: Int(70 * UIScreenScale), height: Int(70 * UIScreenScale), playbackMode: .once, mode: .direct(cachePathPrefix: nil))
@@ -232,6 +233,17 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         case .info:
             self.animatedStickerNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "anim_infotip"), width: Int(70 * UIScreenScale), height: Int(70 * UIScreenScale), playbackMode: .once, mode: .direct(cachePathPrefix: nil))
             self.animatedStickerNode.automaticallyLoadFirstFrame = true
+        }
+
+        self.imageNode = ASImageNode()
+        self.imageNode.isHidden = true
+        switch icon {
+        case .key:
+            self.imageNode.image = generateTintedImage(image: UIImage(bundleImageName: "Call/KeyTooltipLock"), color: .white)
+            self.imageNode.displaysAsynchronously = false
+            self.imageNode.isHidden = false
+        default:
+            break
         }
         
         super.init()
@@ -255,6 +267,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         }
         self.containerNode.addSubnode(self.textNode)
         self.containerNode.addSubnode(self.animatedStickerNode)
+        self.containerNode.addSubnode(self.imageNode)
         self.scrollingContainer.addSubnode(self.containerNode)
         self.addSubnode(self.scrollingContainer)
         
@@ -325,7 +338,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         
         let sideInset: CGFloat = self.inset + layout.safeInsets.left
         let bottomInset: CGFloat = 10.0
-        let contentInset: CGFloat = 11.0
+        var contentInset: CGFloat = 11.0
         let contentVerticalInset: CGFloat = 11.0
         let animationSize: CGSize
         let animationInset: CGFloat
@@ -344,6 +357,11 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
             animationSize = CGSize(width: 32.0, height: 32.0)
             animationInset = 0.0
             animationSpacing = 8.0
+        case .key:
+            animationSize = self.imageNode.image?.size ?? .zero
+            animationInset = 0.0
+            animationSpacing = 6.0
+            contentInset = 16.0
         }
         
         let containerWidth = max(100.0, min(layout.size.width, 614.0) - (sideInset + layout.safeInsets.left) * 2.0)
@@ -442,6 +460,8 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
         
         transition.updateFrame(node: self.animatedStickerNode, frame: CGRect(origin: CGPoint(x: contentInset - animationInset, y: contentVerticalInset - animationInset), size: CGSize(width: animationSize.width + animationInset * 2.0, height: animationSize.height + animationInset * 2.0)))
         self.animatedStickerNode.updateLayout(size: CGSize(width: animationSize.width + animationInset * 2.0, height: animationSize.height + animationInset * 2.0))
+
+        transition.updateFrame(node: self.imageNode, frame: CGRect(origin: CGPoint(x: contentInset - animationInset, y: contentVerticalInset - animationInset - 1.5), size: CGSize(width: animationSize.width + animationInset * 2.0, height: animationSize.height + animationInset * 2.0)))
     }
     
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
@@ -500,7 +520,7 @@ private final class TooltipScreenNode: ViewControllerTracingNode {
             animationDelay = 0.6
         case .info:
             animationDelay = 0.2
-        case .none:
+        case .none, .key:
             animationDelay = 0.0
         }
         
@@ -555,6 +575,7 @@ public final class TooltipScreen: ViewController {
     public enum Icon {
         case info
         case chatListPress
+        case key
     }
     
     public enum DismissOnTouch {
