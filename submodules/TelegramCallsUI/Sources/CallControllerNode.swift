@@ -1299,25 +1299,31 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }, rated: { [weak self] in
             (self?.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true) |> delay(1.0, queue: Queue.mainQueue()))
         })
-
-        let closeButton = CloseButtonNode()
+        self.containerNode.addSubnode(ratingNode)
 
         if let validSize = self.validLayout?.0.size {
 
             let size = CGSize(width: 304, height: 142)
             ratingNode.frame = CGRect(origin: CGPoint(x: validSize.width / 2.0 - size.width / 2.0, y: validSize.height / 2.0 + 57.0 / 2.0 + 50), size: size)
-            ratingNode.view.layer.contentsScale = 0
-            ratingNode.layer.animateScale(from: 0, to: 1, duration: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
             _ = ratingNode.updateLayout(size: size, transition: .immediate)
+
+            ratingNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2, delay: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+            ratingNode.layer.animateScale(from: 0.0, to: 1.05, duration: 0.2, delay: 0.1, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false, completion: { _ in
+                ratingNode.layer.animateScale(from: 1.05, to: 1.0, duration: 0.1, timingFunction: CAMediaTimingFunctionName.linear.rawValue)
+            })
         }
-        self.containerNode.addSubnode(ratingNode)
 
         let bgNode = self.containerNode
+
+        let closeButton = CloseButtonNode()
+        closeButton.layer.masksToBounds = true
+        bgNode.addSubnode(closeButton)
         let closeHeight = closeButton.updateLayout(constrainedWidth: bgNode.frame.width, transition: .immediate)
         closeButton.frame = CGRect(x: 0, y: buttonsNode.frame.minY, width: bgNode.frame.width, height: closeHeight)
-        bgNode.addSubnode(closeButton)
         closeButton.addTopTitle(onNode: bgNode)
 
+        closeButton.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+        
         if let time = self.call.canBeRemovedDelay?(self.callState) {
             closeButton.animate(time: time)
         }
