@@ -503,6 +503,10 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
     }
 
+    private var didAnimateImageOnActive: Bool = false
+    private var isAnimatingImageOnActive: Bool = false
+    private var didStartImageRingingAnimation: Bool = false
+
     init(sharedContext: SharedAccountContext, account: Account, presentationData: PresentationData, statusBar: StatusBar, debugInfo: Signal<(String, String), NoError>, shouldStayHiddenUntilConnection: Bool = false, easyDebugAccess: Bool, call: PresentationCall) {
         self.sharedContext = sharedContext
         self.account = account
@@ -1128,7 +1132,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 }
             case .terminating:
                 statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
-                self.audioLevelView.stopAnimating()
             case let .terminated(_, reason, _):
                 if let reason = reason {
                     switch reason {
@@ -1164,7 +1167,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                 } else {
                     statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
                 }
-                self.audioLevelView.stopAnimating()
             case .ringing:
                 var text: String
                 if self.call.isVideo {
@@ -1282,6 +1284,18 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         } else if runAnimation {
             audioLevelView.startAnimating()
         }
+
+        switch callState.state {
+        case .waiting, .connecting, .requesting, .ringing:
+            self.animateImageForRinging()
+        case .terminating, .terminated:
+            self.stopImageAnimation()
+            self.audioLevelView.stopAnimating()
+        case .active:
+            self.animateImageForActive()
+        case .reconnecting:
+            break
+        }
     }
 
     func updateAudioLevel(_ audioLevel: Float) {
@@ -1366,6 +1380,61 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     private func closePressed() {
 
         (self.call as? PresentationCallImpl)?.canBeRemovedPromise.set(.single(true))
+    }
+
+    private func animateImageForRinging(force: Bool = false) {
+
+        guard (!self.didStartImageRingingAnimation || force), !self.didAnimateImageOnActive, !self.isAnimatingImageOnActive else {
+            return
+        }
+        self.didStartImageRingingAnimation = true
+        self.imageNode.layer.animateScale(from: 1.0, to: 1.05, duration: 1.0, delay: 0.3, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false, completion: { [weak self] _ in
+            self?.imageNode.layer.animateScale(from: 1.05, to: 1.0, duration: 1.0, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false, completion: { [weak self] _ in
+                self?.animateImageForRinging(force: true)
+            })
+        })
+        self.audioLevelView.layer.animateScale(from: 1.0, to: 1.1, duration: 1.0, delay: 0.3, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false, completion: { [weak self] _ in
+            self?.audioLevelView.layer.animateScale(from: 1.1, to: 1.0, duration: 1.0, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false)
+        })
+    }
+
+    private func animateImageForActive() {
+
+        guard !self.didAnimateImageOnActive else {
+            return
+        }
+        self.didAnimateImageOnActive = true
+        self.isAnimatingImageOnActive = true
+
+        var startScale = self.imageNode.layer.contentsScale
+        if let animation = self.imageNode.layer.animation(forKey: "transform.scale") as? CABasicAnimation,
+           let fromScale = (animation.fromValue as? NSNumber)?.floatValue,
+           let toScale = (animation.toValue as? NSNumber)?.floatValue {
+            let progress = (CACurrentMediaTime() - animation.beginTime) / animation.duration
+            startScale = CGFloat(fromScale + (toScale - fromScale) * Float(progress))
+        }
+
+        self.imageNode.layer.animateScale(from: startScale, to: 1.15, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false, completion: { [weak self] _ in
+            self?.imageNode.layer.animateScale(from: 1.15, to: 0.95, duration: 0.2, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false, completion: { [weak self] _ in
+                self?.imageNode.layer.animateScale(from: 0.95, to: 1.0, duration: 0.2, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: true, completion: { [weak self] _ in
+                    self?.isAnimatingImageOnActive = false
+                })
+            })
+        })
+        self.audioLevelView.layer.animateScale(from: self.audioLevelView.layer.contentsScale, to: 1.2, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false, completion: { [weak self] _ in
+            self?.audioLevelView.layer.animateScale(from: 1.2, to: 0.95, duration: 0.2, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: false, completion: { [weak self] _ in
+                self?.audioLevelView.layer.animateScale(from: 0.95, to: 1.0, duration: 0.2, timingFunction: CAMediaTimingFunctionName.linear.rawValue, removeOnCompletion: true)
+            })
+        })
+        self.audioLevelView.updateLevel(1, immediately: true)
+    }
+
+    private func stopImageAnimation() {
+
+        self.imageNode.layer.removeAllAnimations()
+        self.imageNode.layer.animateScale(from: self.imageNode.layer.contentsScale, to: 1.0, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+        self.didAnimateImageOnActive = true
+        self.isAnimatingImageOnActive = false
     }
     
     private func updateToastContent() {
@@ -1813,12 +1882,14 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
 
         let imageSize = CGSize(width: 136, height: 136)
         let imageFrame = CGRect(origin: CGPoint(x: containerFullScreenFrame.width / 2 - imageSize.width / 2, y: containerFullScreenFrame.height / 2 - 70 - imageSize.height), size: imageSize)
-        transition.updateFrame(node: self.imageNode, frame: imageFrame)
-        let arguments = TransformImageArguments(corners: ImageCorners(radius: imageSize.width / 2), imageSize: imageSize, boundingSize: imageSize, intrinsicInsets: UIEdgeInsets())
-        let apply = self.imageNode.asyncLayout()(arguments)
-        apply()
+        if !self.isAnimatingImageOnActive {
+            transition.updateFrame(node: self.imageNode, frame: imageFrame)
+            let arguments = TransformImageArguments(corners: ImageCorners(radius: imageSize.width / 2), imageSize: imageSize, boundingSize: imageSize, intrinsicInsets: UIEdgeInsets())
+            let apply = self.imageNode.asyncLayout()(arguments)
+            apply()
 
-        self.audioLevelView.frame = imageFrame.insetBy(dx: -40, dy: -40)
+            self.audioLevelView.frame = imageFrame.insetBy(dx: -40, dy: -40)
+        }
 
         let navigationOffset: CGFloat = max(20.0, layout.safeInsets.top)
         let topOriginY = interpolate(from: -20.0, to: navigationOffset, value: uiDisplayTransition)
