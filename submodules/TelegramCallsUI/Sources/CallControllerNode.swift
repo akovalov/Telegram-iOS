@@ -1267,17 +1267,19 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         let hasIncomingVideoNode = self.incomingVideoNodeValue != nil && self.expandedVideoNode === self.incomingVideoNodeValue
         self.videoContainerNode.isPinchGestureEnabled = hasIncomingVideoNode
 
-        var isActiveCall = true
+        var runAnimation = true
         if case .terminated(_, _, _) = callState.state {
-            isActiveCall = false
+            runAnimation = false
         } else if case .terminating(_) = callState.state {
-            isActiveCall = false
+            runAnimation = false
+        } else if self.sharedContext.mainWindow?.statusBarHost?.isApplicationInForeground == false {
+            runAnimation = false
         }
-
+        
         let isActiveVideo = self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil
-        if isActiveVideo || !isActiveCall {
+        if isActiveVideo || !runAnimation {
             audioLevelView.stopAnimating()
-        } else if isActiveCall {
+        } else if runAnimation {
             audioLevelView.startAnimating()
         }
     }
