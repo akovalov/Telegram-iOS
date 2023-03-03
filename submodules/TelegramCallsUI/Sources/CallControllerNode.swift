@@ -452,7 +452,11 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     
     private var buttonsMode: CallControllerButtonsMode?
     
-    private var isUIHidden: Bool = false
+    private var isUIHidden: Bool = false {
+        didSet {
+            self.updateDimVisibility()
+        }
+    }
     private var isVideoPaused: Bool = false
     private var isVideoPinched: Bool = false
     
@@ -508,7 +512,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.dimNode = ASImageNode()
         self.dimNode.contentMode = .scaleToFill
         self.dimNode.isUserInteractionEnabled = false
-        self.dimNode.backgroundColor = UIColor(white: 0.0, alpha: 0.3)
         
         self.backButtonArrowNode = ASImageNode()
         self.backButtonArrowNode.displayWithoutProcessing = true
@@ -847,10 +850,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
             if let peerReference = PeerReference(peer), !peer.profileImageRepresentations.isEmpty {
                 let representations: [ImageRepresentationWithReference] = peer.profileImageRepresentations.map({ ImageRepresentationWithReference(representation: $0, reference: .avatar(peer: peerReference, resource: $0.resource)) })
                 self.imageNode.setSignal(chatAvatarGalleryPhoto(account: self.account, representations: representations, immediateThumbnailData: nil, autoFetchFullSize: true))
-                self.dimNode.isHidden = true
             } else {
                 self.imageNode.setSignal(callDefaultBackground())
-                self.dimNode.isHidden = true
             }
             
             self.toastNode.title = EnginePeer(peer).compactDisplayTitle
@@ -1363,32 +1364,29 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         guard let callState = self.callState else {
             return
         }
-        
-        var visible = true
-        var statusTransition = transition
-        if case .active = callState.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil, self.keyPreviewNode != nil {
-            visible = false
-            statusTransition = .animated(duration: 0.25, curve: .spring)
+
+        var isActiveVideo = false
+        if case .active = callState.state, self.incomingVideoNodeValue != nil || self.outgoingVideoNodeValue != nil {
+            isActiveVideo = true
+        }
+        if isActiveVideo, self.keyPreviewNode != nil {
+            self.statusNode.setVisible(false, transition: .animated(duration: 0.25, curve: .spring))
+        } else {
+            self.statusNode.setVisible(true, transition: transition)
         }
 
-        if !self.dimNode.isHidden {
-            self.dimNode.isHidden = true
+        let isDimVisible = self.dimNode.image != nil
+        let shouldDimBeVisible = isActiveVideo && !self.isUIHidden
+        if isDimVisible != shouldDimBeVisible {
+            let image: UIImage? = shouldDimBeVisible ? generateGradientImage(size: CGSize(width: 1.0, height: validLayout?.0.size.height ?? 640.0), colors: [UIColor.black.withAlphaComponent(0.4), UIColor.clear, UIColor.clear, UIColor.black.withAlphaComponent(0.4)], locations: [0.0, 0.22, 0.7, 1.0]) : nil
+            if case let .animated(duration, _) = transition {
+                UIView.transition(with: self.dimNode.view, duration: duration, options: .transitionCrossDissolve, animations: {
+                    self.dimNode.image = image
+                }, completion: nil)
+            } else {
+                self.dimNode.image = image
+            }
         }
-//        let currentVisible = self.dimNode.image == nil
-//        if visible != currentVisible {
-//            let color = visible ? UIColor(rgb: 0x000000, alpha: 0.3) : UIColor.clear
-//            let image: UIImage? = visible ? nil : generateGradientImage(size: CGSize(width: 1.0, height: 640.0), colors: [UIColor.black.withAlphaComponent(0.3), UIColor.clear, UIColor.clear, UIColor.black.withAlphaComponent(0.3)], locations: [0.0, 0.22, 0.7, 1.0])
-//            if case let .animated(duration, _) = transition {
-//                UIView.transition(with: self.dimNode.view, duration: duration, options: .transitionCrossDissolve, animations: {
-//                    self.dimNode.backgroundColor = color
-//                    self.dimNode.image = image
-//                }, completion: nil)
-//            } else {
-//                self.dimNode.backgroundColor = color
-//                self.dimNode.image = image
-//            }
-//        }
-        self.statusNode.setVisible(visible, transition: statusTransition)
     }
 
     private func updateBackground(forCallState callState: PresentationCallState) {
@@ -1747,7 +1745,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         transition.updateFrame(node: self.videoContainerNode, frame: containerFullScreenFrame)
         self.videoContainerNode.update(size: containerFullScreenFrame.size, transition: transition)
         
-//        transition.updateAlpha(node: self.dimNode, alpha: pinchTransitionAlpha)
+        transition.updateAlpha(node: self.dimNode, alpha: pinchTransitionAlpha)
         transition.updateFrame(node: self.dimNode, frame: containerFullScreenFrame)
         
         if let keyPreviewNode = self.keyPreviewNode {
