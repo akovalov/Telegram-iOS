@@ -20,6 +20,7 @@ import ContextUI
 import WallpaperBackgroundNode
 import AudioBlob
 import TelegramNotices
+import AvatarNode
 
 private func interpolateFrame(from fromValue: CGRect, to toValue: CGRect, t: CGFloat) -> CGRect {
     return CGRect(x: floorToScreenPixels(toValue.origin.x * t + fromValue.origin.x * (1.0 - t)), y: floorToScreenPixels(toValue.origin.y * t + fromValue.origin.y * (1.0 - t)), width: floorToScreenPixels(toValue.size.width * t + fromValue.size.width * (1.0 - t)), height: floorToScreenPixels(toValue.size.height * t + fromValue.size.height * (1.0 - t)))
@@ -373,7 +374,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     private let containerNode: ASDisplayNode
     private let videoContainerNode: PinchSourceContainerNode
     
-    private let imageNode: TransformImageNode
+    private let imageNode: AvatarNode
     private let dimNode: ASImageNode
     private let audioLevelView: VoiceBlobView
 
@@ -524,8 +525,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         
         self.videoContainerNode = PinchSourceContainerNode()
         
-        self.imageNode = TransformImageNode()
-        self.imageNode.contentAnimations = [.subsequentUpdates]
+        self.imageNode = AvatarNode(font: avatarPlaceholderFont(size: 32.0))
+
         self.dimNode = ASImageNode()
         self.dimNode.contentMode = .scaleToFill
         self.dimNode.isUserInteractionEnabled = false
@@ -586,7 +587,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         self.backgroundNodes.forEach { type, node in
             self.containerNode.addSubnode(node)
         }
-        self.containerNode.view.insertSubview(self.audioLevelView, belowSubview: self.imageNode.view)
+        self.containerNode.view.addSubview(self.audioLevelView)
         self.containerNode.addSubnode(self.imageNode)
         self.containerNode.addSubnode(self.videoContainerNode)
         self.containerNode.addSubnode(self.dimNode)
@@ -868,13 +869,9 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
     func updatePeer(accountPeer: Peer, peer: Peer, hasOther: Bool) {
         if !arePeersEqual(self.peer, peer) {
             self.peer = peer
-            if let peerReference = PeerReference(peer), !peer.profileImageRepresentations.isEmpty {
-                let representations: [ImageRepresentationWithReference] = peer.profileImageRepresentations.map({ ImageRepresentationWithReference(representation: $0, reference: .avatar(peer: peerReference, resource: $0.resource)) })
-                self.imageNode.setSignal(chatAvatarGalleryPhoto(account: self.account, representations: representations, immediateThumbnailData: nil, autoFetchFullSize: true))
-            } else {
-                self.imageNode.setSignal(callDefaultBackground())
-            }
-            
+
+            self.imageNode.setPeer(context: self.sharedContext.makeTempAccountContext(account: account), theme: self.presentationData.theme, peer: EnginePeer(peer), overrideImage: nil, emptyColor: self.presentationData.theme.list.mediaPlaceholderColor)
+
             self.toastNode.title = EnginePeer(peer).compactDisplayTitle
             self.statusNode.title = EnginePeer(peer).displayTitle(strings: self.presentationData.strings, displayOrder: self.presentationData.nameDisplayOrder)
             if hasOther {
@@ -1887,10 +1884,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         let imageFrame = CGRect(origin: CGPoint(x: containerFullScreenFrame.width / 2 - imageSize.width / 2, y: containerFullScreenFrame.height / 2 - 70 - imageSize.height), size: imageSize)
         if !self.isAnimatingImageOnActive {
             transition.updateFrame(node: self.imageNode, frame: imageFrame)
-            let arguments = TransformImageArguments(corners: ImageCorners(radius: imageSize.width / 2), imageSize: imageSize, boundingSize: imageSize, intrinsicInsets: UIEdgeInsets())
-            let apply = self.imageNode.asyncLayout()(arguments)
-            apply()
-
             self.audioLevelView.frame = imageFrame.insetBy(dx: -40, dy: -40)
         }
 
