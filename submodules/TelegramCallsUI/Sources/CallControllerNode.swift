@@ -525,7 +525,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         
         self.videoContainerNode = PinchSourceContainerNode()
         
-        self.imageNode = AvatarNode(font: avatarPlaceholderFont(size: 32.0))
+        self.imageNode = AvatarNode(font: avatarPlaceholderFont(size: 44.0))
 
         self.dimNode = ASImageNode()
         self.dimNode.contentMode = .scaleToFill
@@ -1333,7 +1333,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         closeButton.layer.masksToBounds = true
         bgNode.addSubnode(closeButton)
         let closeHeight = closeButton.updateLayout(constrainedWidth: bgNode.frame.width, transition: .immediate)
-        closeButton.frame = CGRect(x: 0, y: buttonsNode.frame.minY, width: bgNode.frame.width, height: closeHeight)
+        let minCloseOriginY = ratingNode.frame.maxY + 25
+        closeButton.frame = CGRect(x: 0, y: max(minCloseOriginY, buttonsNode.frame.minY), width: bgNode.frame.width, height: closeHeight)
         closeButton.addTopTitle(onNode: bgNode)
 
         closeButton.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
