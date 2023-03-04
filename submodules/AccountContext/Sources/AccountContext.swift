@@ -918,7 +918,8 @@ public protocol AccountContext: AnyObject {
     var animationRenderer: MultiAnimationRenderer { get }
     
     var animatedEmojiStickers: [String: [StickerPackItem]] { get }
-    
+    var animatedEmojiStickersSignal: Signal<[String: [StickerPackItem]], NoError> { get }
+
     var userLimits: EngineConfiguration.UserLimits { get }
     
     func storeSecureIdPassword(password: String)

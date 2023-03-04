@@ -2063,7 +2063,7 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         if self.keyPreviewNode == nil, let keyText = self.keyTextData?.1, let peer = self.peer {
             let titleText = self.presentationData.strings.Call_EmojiTitle
             let infoText = self.presentationData.strings.Call_EmojiDescription(EnginePeer(peer).compactDisplayTitle).string.replacingOccurrences(of: "%%", with: "%")
-            let keyPreviewNode = CallControllerKeyPreviewNode(keyText: keyText, titleText: titleText, infoText: infoText, dismiss: { [weak self] in
+            let keyPreviewNode = CallControllerKeyPreviewNode(keyText: keyText, titleText: titleText, infoText: infoText, accountContext: self.sharedContext.makeTempAccountContext(account: self.account), dismiss: { [weak self] in
                 if let _ = self?.keyPreviewNode {
                     self?.backPressed()
                 }
