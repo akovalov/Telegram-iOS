@@ -1131,7 +1131,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                     statusValue = .text(string: self.presentationData.strings.Call_StatusRequesting, displayLogo: false)
                 }
             case .terminating:
-                statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
+                statusNode.title = self.presentationData.strings.Call_StatusEnded
+                statusValue = .ended
             case let .terminated(_, reason, _):
                 if let reason = reason {
                     switch reason {
@@ -1140,7 +1141,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                                 case .busy:
                                     statusValue = .text(string: self.presentationData.strings.Call_StatusBusy, displayLogo: false)
                                 case .hungUp, .missed:
-                                    statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
+                                    statusNode.title = self.presentationData.strings.Call_StatusEnded
+                                    statusValue = .ended
                             }
                         case let .error(error):
                             let text = self.presentationData.strings.Call_StatusFailed
@@ -1165,7 +1167,8 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
                             statusValue = .text(string: text, displayLogo: false)
                     }
                 } else {
-                    statusValue = .text(string: self.presentationData.strings.Call_StatusEnded, displayLogo: false)
+                    statusNode.title = self.presentationData.strings.Call_StatusEnded
+                    statusValue = .ended
                 }
             case .ringing:
                 var text: String
@@ -1910,7 +1913,6 @@ final class CallControllerNode: ViewControllerTracingNode, CallControllerNodePro
         }
         let statusHeight = self.statusNode.updateLayout(constrainedWidth: layout.size.width, transition: transition)
         transition.updateFrame(node: self.statusNode, frame: CGRect(origin: CGPoint(x: 0.0, y: statusNodeFrameCenterY - statusHeight / 2.0), size: CGSize(width: layout.size.width, height: statusHeight)))
-        transition.updateAlpha(node: self.statusNode, alpha: overlayAlpha)
         
         transition.updateFrame(node: self.toastNode, frame: CGRect(origin: CGPoint(x: 0.0, y: toastOriginY), size: CGSize(width: layout.size.width, height: toastHeight)))
         transition.updateFrame(node: self.buttonsNode, frame: CGRect(origin: CGPoint(x: 0.0, y: buttonsOriginY), size: CGSize(width: layout.size.width, height: buttonsHeight)))

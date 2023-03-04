@@ -14,7 +14,8 @@ private let regularStatusFont = Font.regular(18.0)
 enum CallControllerStatusValue: Equatable {
     case text(string: String, displayLogo: Bool)
     case timer((String, Bool) -> String, Double)
-    
+    case ended
+
     static func ==(lhs: CallControllerStatusValue, rhs: CallControllerStatusValue) -> Bool {
         switch lhs {
             case let .text(text, displayLogo):
@@ -29,6 +30,12 @@ enum CallControllerStatusValue: Equatable {
                 } else {
                     return false
                 }
+        case .ended:
+            if case .ended = rhs {
+                return true
+            } else {
+                return false
+            }
         }
     }
 }
@@ -109,7 +116,9 @@ final class CallControllerStatusNode: ASDisplayNode {
     
     private var statusTimer: SwiftSignalKit.Timer?
     private var validLayoutWidth: CGFloat?
-    
+
+    private var lastReferenceTime: Double?
+
     override init() {
         self.titleNode = TextNode()
         self.statusContainerNode = ASDisplayNode()
@@ -178,6 +187,7 @@ final class CallControllerStatusNode: ASDisplayNode {
             }
             showActivity = text.contains("...")
         case let .timer(format, referenceTime):
+            lastReferenceTime = referenceTime
             let duration = Int32(CFAbsoluteTimeGetCurrent() - referenceTime)
             let durationString: String
             let measureDurationString: String
@@ -194,6 +204,24 @@ final class CallControllerStatusNode: ASDisplayNode {
                 statusOffset += 8.0
             }
             showActivity = false
+        case .ended:
+            let referenceTime = lastReferenceTime ?? CFAbsoluteTimeGetCurrent()
+            let duration = Int32(CFAbsoluteTimeGetCurrent() - referenceTime)
+            let durationString: String
+            let measureDurationString: String
+            if duration > 60 * 60 {
+                durationString = String(format: "%02d:%02d:%02d", arguments: [duration / 3600, (duration / 60) % 60, duration % 60])
+                measureDurationString = "00:00:00"
+            } else {
+                durationString = String(format: "%02d:%02d", arguments: [(duration / 60) % 60, duration % 60])
+                measureDurationString = "00:00"
+            }
+            statusText = durationString
+            statusMeasureText = measureDurationString
+            showActivity = false
+            statusDisplayLogo = true
+            self.logoNode.image = generateTintedImage(image: UIImage(bundleImageName: "Call/CallEndedTimeIcon"), color: .white)
+            statusOffset += 8.0
         }
         
         let spacing: CGFloat = -2.0
@@ -215,7 +243,13 @@ final class CallControllerStatusNode: ASDisplayNode {
         self.logoNode.isHidden = !statusDisplayLogo
         if let image = self.logoNode.image, let firstLineRect = statusMeasureLayout.linesRects().first {
             let firstLineOffset = floor((statusMeasureLayout.size.width - firstLineRect.width) / 2.0)
-            self.logoNode.frame = CGRect(origin: CGPoint(x: self.statusNode.frame.minX + firstLineOffset - image.size.width - 7.0, y: 5.0), size: image.size)
+            var imageOriginY: CGFloat = 5.0
+            var imageOriginX: CGFloat = self.statusNode.frame.minX + firstLineOffset - image.size.width - 7.0
+            if case .ended = status {
+                imageOriginY = 2.0
+                imageOriginX += 3.0
+            }
+            self.logoNode.frame = CGRect(origin: CGPoint(x: imageOriginX, y: imageOriginY), size: image.size)
         }
         
         self.titleActivateAreaNode.frame = self.titleNode.frame
