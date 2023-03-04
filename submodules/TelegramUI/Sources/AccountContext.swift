@@ -174,7 +174,7 @@ public final class AccountContextImpl: AccountContext {
     public let animationRenderer: MultiAnimationRenderer
     
     private var animatedEmojiStickersDisposable: Disposable?
-    public private(set) var animatedEmojiStickers: [String: [StickerPackItem]] = [:]
+    public var animatedEmojiStickers: [String: [StickerPackItem]] = [:]
     private let animatedEmojiStickersValue = Promise<[String: [StickerPackItem]]>()
     public var animatedEmojiStickersSignal: Signal<[String: [StickerPackItem]], NoError> {
         return self.animatedEmojiStickersValue.get()

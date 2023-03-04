@@ -35,7 +35,8 @@ public final class PresentationCallImpl: PresentationCall {
     private let enableTCP: Bool
     public let preferredVideoCodec: String?
     public let peer: Peer?
-    
+    public var canBeRemovedDelay: ((_ state: PresentationCallState?) -> Double?)?
+
     private let serializedData: String?
     private let dataSaving: VoiceCallDataSaving
     private let proxyServer: ProxyServerSettings?
@@ -92,7 +93,7 @@ public final class PresentationCallImpl: PresentationCall {
     
     private let debugInfoValue = Promise<(String, String)>(("", ""))
     
-    private let canBeRemovedPromise = Promise<Bool>(false)
+    let canBeRemovedPromise = Promise<Bool>(false)
     private var didSetCanBeRemoved = false
     public var canBeRemoved: Signal<Bool, NoError> {
         return self.canBeRemovedPromise.get()
@@ -633,7 +634,7 @@ public final class PresentationCallImpl: PresentationCall {
         if terminating, !wasTerminated {
             if !self.didSetCanBeRemoved {
                 self.didSetCanBeRemoved = true
-                self.canBeRemovedPromise.set(.single(true) |> delay(2.0, queue: Queue.mainQueue()))
+                self.canBeRemovedPromise.set(.single(true) |> delay(canBeRemovedDelay?(presentationState) ?? 2.0, queue: Queue.mainQueue()))
             }
             self.hungUpPromise.set(true)
             if sessionState.isOutgoing {

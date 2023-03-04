@@ -2323,7 +2323,9 @@ Unused sets are archived when you add more.";
 "Calls.AddTab" = "Add Tab";
 "Calls.NewCall" = "New Call";
 
-"Calls.RatingTitle" = "Please rate the quality\nof your Telegram call";
+"Calls.RatingTitle" = "Rate This Call";
+"Calls.RatingTitle2" = "Rate This Call";
+"Calls.RatingText" = "Please rate the quality of this call.";
 "Calls.SubmitRating" = "Submit";
 
 "Call.Seconds_1" = "%@ second";
@@ -2513,7 +2515,7 @@ Unused sets are archived when you add more.";
 "Call.StatusIncoming" = "Telegram Audio...";
 "Call.IncomingVoiceCall" = "Incoming Voice Call";
 "Call.IncomingVideoCall" = "Incoming Video Call";
-"Call.StatusRequesting" = "Contacting...";
+"Call.StatusRequesting" = "Requesting...";
 "Call.StatusWaiting" = "Waiting...";
 "Call.StatusRinging" = "Ringing...";
 "Call.StatusConnecting" = "Connecting...";
@@ -2585,7 +2587,8 @@ Unused sets are archived when you add more.";
 "Call.PhoneCallInProgressMessage" = "You can’t place a Telegram call if you’re already on a phone call.";
 "Call.RecordingDisabledMessage" = "Please end your call before recording a voice message.";
 
-"Call.EmojiDescription" = "If these emoji are the same on %@'s screen, this call is 100%% secure.";
+"Call.EmojiTitle" = "This call is end-to end encrypted";
+"Call.EmojiDescription" = "If the emoji are the same on %@'s screen, this call is 100%% secure.";
 
 "Message.VideoMessage" = "Video Message";
 
@@ -4406,6 +4409,7 @@ Sorry for the inconvenience.";
 
 "Call.Mute" = "mute";
 "Call.Camera" = "camera";
+"Call.Video" = "video";
 "Call.Flip" = "flip";
 "Call.End" = "end";
 "Call.Speaker" = "speaker";
@@ -5634,9 +5638,12 @@ Sorry for the inconvenience.";
 "Call.CameraConfirmationConfirm" = "Switch";
 
 "Call.YourMicrophoneOff" = "Your microphone is off";
+"Call.YourMicrophoneTurnedOff" = "Your microphone is turned off";
 "Call.MicrophoneOff" = "%@'s microphone is off";
 "Call.CameraOff" = "%@'s camera is off";
 "Call.BatteryLow" = "%@'s battery level is low";
+"Call.EncryptionKey" = "Encryption key of this call";
+"Call.WeakNetwork" = "Weak network signal";
 
 "Call.Audio" = "audio";
 "Call.AudioRouteMute" = "Mute Yourself";
@@ -6731,6 +6738,7 @@ Sorry for the inconvenience.";
 "VoiceChat.VideoPreviewFrontCamera" = "Front Camera";
 "VoiceChat.VideoPreviewBackCamera" = "Back Camera";
 "VoiceChat.VideoPreviewContinue" = "Continue";
+"VoiceChat.VideoPreviewStartVideo" = "Start Video";
 "VoiceChat.VideoPreviewShareScreenInfo" = "Everything on your screen\nwill be shared";
 
 "Gallery.SaveToGallery" = "Save to Gallery";

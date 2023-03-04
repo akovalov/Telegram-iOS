@@ -28,10 +28,12 @@ protocol CallControllerNodeProtocol: AnyObject {
     var callEnded: ((Bool) -> Void)? { get set }
     var dismissedInteractively: (() -> Void)? { get set }
     var dismissAllTooltips: (() -> Void)? { get set }
+    var push: ((ViewController) -> Void)? { get set }
     
     func updateAudioOutputs(availableOutputs: [AudioSessionOutput], currentOutput: AudioSessionOutput?)
     func updateCallState(_ callState: PresentationCallState)
     func updatePeer(accountPeer: Peer, peer: Peer, hasOther: Bool)
+    func updateAudioLevel(_ audioLevel: Float)
     
     func animateIn()
     func animateOut(completion: @escaping () -> Void)
@@ -72,7 +74,9 @@ public final class CallController: ViewController {
     private var audioOutputState: ([AudioSessionOutput], AudioSessionOutput?)?
     
     private let idleTimerExtensionDisposable = MetaDisposable()
-    
+
+    private var audioLevelDisposable: Disposable?
+
     public init(sharedContext: SharedAccountContext, account: Account, call: PresentationCall, easyDebugAccess: Bool) {
         self.sharedContext = sharedContext
         self.account = account
@@ -93,6 +97,13 @@ public final class CallController: ViewController {
         self.disposable = (call.state
         |> deliverOnMainQueue).start(next: { [weak self] callState in
             self?.callStateUpdated(callState)
+        })
+        self.audioLevelDisposable = (call.audioLevel
+        |> deliverOnMainQueue).start(next: { [weak self] audioLevel in
+            if let strongSelf = self,
+               strongSelf.isNodeLoaded {
+                strongSelf.controllerNode.updateAudioLevel(audioLevel)
+            }
         })
         
         self.callMutedDisposable = (call.isMuted
@@ -126,6 +137,7 @@ public final class CallController: ViewController {
         self.callMutedDisposable?.dispose()
         self.audioOutputStateDisposable?.dispose()
         self.idleTimerExtensionDisposable.dispose()
+        self.audioLevelDisposable?.dispose()
     }
     
     private func callStateUpdated(_ callState: PresentationCallState) {
@@ -296,6 +308,10 @@ public final class CallController: ViewController {
                     }
                 })
             }
+        }
+
+        self.controllerNode.push = { [weak self] c in
+            self?.push(c)
         }
         
         self.controllerNode.dismissedInteractively = { [weak self] in

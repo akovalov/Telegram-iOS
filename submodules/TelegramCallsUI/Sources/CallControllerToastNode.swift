@@ -5,7 +5,7 @@ import AsyncDisplayKit
 import SwiftSignalKit
 import TelegramPresentationData
 
-private let labelFont = Font.regular(17.0)
+private let labelFont = Font.regular(16.0)
 private let smallLabelFont = Font.regular(15.0)
 
 private enum ToastDescription: Equatable {
@@ -14,12 +14,14 @@ private enum ToastDescription: Equatable {
         case microphone
         case mute
         case battery
+        case weakNetwork
     }
     
     case camera
     case microphone
     case mute
     case battery
+    case weakNetwork
     
     var key: Key {
         switch self {
@@ -31,6 +33,8 @@ private enum ToastDescription: Equatable {
             return .mute
         case .battery:
             return .battery
+        case .weakNetwork:
+            return .weakNetwork
         }
     }
 }
@@ -46,6 +50,7 @@ struct CallControllerToastContent: OptionSet {
     public static let microphone = CallControllerToastContent(rawValue: 1 << 1)
     public static let mute = CallControllerToastContent(rawValue: 1 << 2)
     public static let battery = CallControllerToastContent(rawValue: 1 << 3)
+    public static let weakNetwork = CallControllerToastContent(rawValue: 1 << 4)
 }
 
 final class CallControllerToastContainerNode: ASDisplayNode {
@@ -93,6 +98,9 @@ final class CallControllerToastContainerNode: ASDisplayNode {
         if content.contains(.battery) {
             toasts.append(.battery)
         }
+        if content.contains(.weakNetwork) {
+            toasts.append(.weakNetwork)
+        }
         
         var transitions: [ToastDescription.Key: (ContainedViewLayoutTransition, CGFloat, Bool)] = [:]
         var validKeys: [ToastDescription.Key] = []
@@ -128,8 +136,8 @@ final class CallControllerToastContainerNode: ASDisplayNode {
                 case .mute:
                     toastContent = CallControllerToastItemNode.Content(
                         key: .mute,
-                        image: .microphone,
-                        text: strings.Call_YourMicrophoneOff
+                        image: .mute,
+                        text: strings.Call_YourMicrophoneTurnedOff
                     )
                 case .battery:
                     toastContent = CallControllerToastItemNode.Content(
@@ -137,8 +145,14 @@ final class CallControllerToastContainerNode: ASDisplayNode {
                         image: .battery,
                         text: strings.Call_BatteryLow(self.title).string
                     )
+                case .weakNetwork:
+                    toastContent = CallControllerToastItemNode.Content(
+                        key: .weakNetwork,
+                        image: .weakNetwork,
+                        text: strings.Call_WeakNetwork
+                    )
             }
-            let toastHeight = toastNode.update(width: width, content: toastContent, transition: toastTransition)
+            let toastHeight = toastNode.update(width: width, content: toastContent, transition: .immediate)
             transitions[toast.key] = (toastTransition, toastHeight, animateIn)
         }
         
@@ -196,6 +210,8 @@ private class CallControllerToastItemNode: ASDisplayNode {
             case camera
             case microphone
             case battery
+            case mute
+            case weakNetwork
         }
         
         var key: ToastDescription.Key
@@ -271,6 +287,10 @@ private class CallControllerToastItemNode: ASDisplayNode {
                     image = generateTintedImage(image: UIImage(bundleImageName: "Call/CallToastMicrophone"), color: .white)
                 case .battery:
                     image = generateTintedImage(image: UIImage(bundleImageName: "Call/CallToastBattery"), color: .white)
+                case .mute:
+                    break
+                case .weakNetwork:
+                    break
             }
             
             if transition.isAnimated, let image = image, let previousContent = self.iconNode.image {
@@ -282,7 +302,7 @@ private class CallControllerToastItemNode: ASDisplayNode {
                   
             self.textNode.attributedText = NSAttributedString(string: content.text, font: font, textColor: .white)
             
-            let iconSize = CGSize(width: 44.0, height: 28.0)
+            let iconSize = CGSize(width: image != nil ? 44.0 : 14.0, height: 28.0)
             let iconSpacing: CGFloat = isNarrowScreen ? 0.0 : 1.0
             let textSize = self.textNode.updateLayout(CGSize(width: width - inset * 2.0 - iconSize.width - iconSpacing, height: 100.0))
             
@@ -301,23 +321,14 @@ private class CallControllerToastItemNode: ASDisplayNode {
     }
     
     func animateIn() {
-        let targetFrame = self.clipNode.frame
-        let initialFrame = CGRect(x: floor((self.frame.width - 44.0) / 2.0), y: 0.0, width: 44.0, height: 28.0)
-        
-        self.clipNode.frame = initialFrame
-        
-        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
-        self.layer.animateSpring(from: 0.01 as NSNumber, to: 1.0 as NSNumber, keyPath: "transform.scale", duration: 0.3, damping: 105.0, completion: { _ in
-            self.clipNode.frame = targetFrame
-            
-            self.clipNode.layer.animateFrame(from: initialFrame, to: targetFrame, duration: 0.35, timingFunction: kCAMediaTimingFunctionSpring)
+        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.25, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+        self.layer.animateScale(from: 0.0, to: 1.05, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false, completion: { _ in
+            self.layer.animateScale(from: 1.05, to: 1.0, duration: 0.05, timingFunction: CAMediaTimingFunctionName.linear.rawValue)
         })
     }
     
     func animateOut(transition: ContainedViewLayoutTransition, completion: @escaping () -> Void) {
-        transition.updateTransformScale(node: self, scale: 0.1)
-        transition.updateAlpha(node: self, alpha: 0.0, completion: { _ in
-            completion()
-        })
+        self.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
+        self.layer.animateScale(from: 1.0, to: 0.0, duration: 0.2, timingFunction: kCAMediaTimingFunctionSpring, removeOnCompletion: false)
     }
 }
